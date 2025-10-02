@@ -21,10 +21,10 @@ serve(async (req) => {
 
     console.log('Processando vídeo:', videoFile.name, videoFile.type);
 
-    // Extrair áudio do vídeo e transcrever com OpenAI Whisper
+    // Extrair áudio do vídeo e transcrever com Groq Whisper
     const audioFormData = new FormData();
     audioFormData.append('file', videoFile, videoFile.name);
-    audioFormData.append('model', 'whisper-1');
+    audioFormData.append('model', 'whisper-large-v3-turbo');
     audioFormData.append('language', 'pt');
     audioFormData.append('response_format', 'verbose_json');
 
