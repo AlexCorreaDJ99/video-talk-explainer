@@ -29,7 +29,7 @@ serve(async (req) => {
     audioFormData.append('response_format', 'verbose_json');
 
     console.log('Transcrevendo áudio com Whisper...');
-    const transcriptionResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    const transcriptionResponse = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
