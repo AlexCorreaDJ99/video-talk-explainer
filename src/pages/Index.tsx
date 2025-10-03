@@ -26,13 +26,20 @@ const Index = () => {
   const [analysis, setAnalysis] = useState<VideoAnalysis | null>(null);
   const { toast } = useToast();
 
-  const handleVideoUpload = async (file: File) => {
+  const handleVideoUpload = async (files: File[]) => {
     setIsAnalyzing(true);
     setAnalysis(null);
 
     try {
       const formData = new FormData();
-      formData.append('video', file);
+      
+      files.forEach((file, index) => {
+        if (file.type.startsWith('video/') || file.type.startsWith('audio/')) {
+          formData.append(`media_${index}`, file);
+        } else if (file.type.startsWith('image/')) {
+          formData.append(`image_${index}`, file);
+        }
+      });
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-video`,
@@ -44,7 +51,7 @@ const Index = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao processar vídeo');
+        throw new Error(errorData.error || 'Erro ao processar arquivos');
       }
 
       const data = await response.json();
@@ -52,14 +59,14 @@ const Index = () => {
 
       toast({
         title: "Análise concluída!",
-        description: "Seu vídeo foi processado com sucesso.",
+        description: "Seus arquivos foram processados com sucesso.",
       });
     } catch (error) {
       console.error('Erro:', error);
       toast({
         variant: "destructive",
         title: "Erro no processamento",
-        description: error instanceof Error ? error.message : "Não foi possível processar o vídeo",
+        description: error instanceof Error ? error.message : "Não foi possível processar os arquivos",
       });
     } finally {
       setIsAnalyzing(false);
@@ -75,10 +82,10 @@ const Index = () => {
             <Video className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
-            Análise Inteligente de Vídeos
+            Análise Inteligente de Mídia
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Faça upload do seu vídeo e obtenha transcrições automáticas, análise de contexto e identificação de problemas com IA
+            Faça upload de vídeos, áudios e imagens juntos para obter análise completa com contexto enriquecido
           </p>
         </header>
 
@@ -94,9 +101,9 @@ const Index = () => {
               <Card className="mt-8 p-8 text-center space-y-4 border-2 border-primary/20 bg-card/50 backdrop-blur">
                 <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
                 <div className="space-y-2">
-                  <h3 className="text-xl font-semibold">Processando seu vídeo...</h3>
+                  <h3 className="text-xl font-semibold">Processando seus arquivos...</h3>
                   <p className="text-muted-foreground">
-                    Estamos transcrevendo o áudio e analisando o conteúdo. Isso pode levar alguns minutos.
+                    Estamos transcrevendo áudios, analisando imagens e processando o conteúdo. Isso pode levar alguns minutos.
                   </p>
                 </div>
               </Card>
@@ -114,7 +121,7 @@ const Index = () => {
                 onClick={() => setAnalysis(null)}
               >
                 <Upload className="w-4 h-4 mr-2" />
-                Novo Vídeo
+                Nova Análise
               </Button>
             </div>
 
@@ -128,10 +135,10 @@ const Index = () => {
             <AlertCircle className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
             <div className="text-left text-sm">
               <p className="font-medium text-foreground">
-                Formatos suportados: MP4, MOV, WEBM, M4A
+                Vídeos: MP4, MOV, WEBM | Áudios: M4A, MP3, WAV | Imagens: JPG, PNG, WEBP
               </p>
               <p className="text-muted-foreground">
-                O processamento pode levar alguns minutos dependendo do tamanho do arquivo
+                Envie múltiplos arquivos juntos para análise com mais contexto
               </p>
             </div>
           </Card>

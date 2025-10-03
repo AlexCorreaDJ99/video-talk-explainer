@@ -13,41 +13,94 @@ serve(async (req) => {
 
   try {
     const formData = await req.formData();
-    const videoFile = formData.get('video') as File;
-
-    if (!videoFile) {
-      throw new Error('Nenhum vídeo fornecido');
+    
+    // Coletar todos os arquivos de mídia e imagens
+    const mediaFiles: File[] = [];
+    const imageFiles: File[] = [];
+    
+    for (const [key, value] of formData.entries()) {
+      if (key.startsWith('media_') && value instanceof File) {
+        mediaFiles.push(value);
+      } else if (key.startsWith('image_') && value instanceof File) {
+        imageFiles.push(value);
+      }
     }
 
-    console.log('Processando vídeo:', videoFile.name, videoFile.type);
-
-    // Extrair áudio do vídeo e transcrever com Groq Whisper
-    const audioFormData = new FormData();
-    audioFormData.append('file', videoFile, videoFile.name);
-    audioFormData.append('model', 'whisper-large-v3-turbo');
-    audioFormData.append('language', 'pt');
-    audioFormData.append('response_format', 'verbose_json');
-
-    console.log('Transcrevendo áudio com Whisper...');
-    const transcriptionResponse = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-      },
-      body: audioFormData,
-    });
-
-    if (!transcriptionResponse.ok) {
-      const error = await transcriptionResponse.text();
-      console.error('Erro na transcrição:', error);
-      throw new Error(`Erro ao transcrever áudio: ${error}`);
+    if (mediaFiles.length === 0 && imageFiles.length === 0) {
+      throw new Error('Nenhum arquivo fornecido');
     }
 
-    const transcription = await transcriptionResponse.json();
-    console.log('Transcrição completa:', transcription.text);
+    console.log(`Processando ${mediaFiles.length} arquivo(s) de mídia e ${imageFiles.length} imagem(ns)`);
+
+    // Processar arquivos de mídia (vídeo/áudio) com Whisper
+    let allTranscriptions = '';
+    let allSegments: any[] = [];
+    
+    for (const mediaFile of mediaFiles) {
+      console.log('Transcrevendo:', mediaFile.name, mediaFile.type);
+      
+      const audioFormData = new FormData();
+      audioFormData.append('file', mediaFile, mediaFile.name);
+      audioFormData.append('model', 'whisper-large-v3-turbo');
+      audioFormData.append('language', 'pt');
+      audioFormData.append('response_format', 'verbose_json');
+
+      const transcriptionResponse = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        },
+        body: audioFormData,
+      });
+
+      if (!transcriptionResponse.ok) {
+        const error = await transcriptionResponse.text();
+        console.error('Erro na transcrição:', error);
+        throw new Error(`Erro ao transcrever ${mediaFile.name}: ${error}`);
+      }
+
+      const transcription = await transcriptionResponse.json();
+      allTranscriptions += `\n\n[${mediaFile.name}]\n${transcription.text}`;
+      allSegments = allSegments.concat(transcription.segments || []);
+    }
+    
+    console.log('Transcrições completas');
+    
+    // Processar imagens e converter para base64
+    const imageContents = [];
+    for (const imageFile of imageFiles) {
+      console.log('Processando imagem:', imageFile.name);
+      const arrayBuffer = await imageFile.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      imageContents.push({
+        type: "image_url",
+        image_url: {
+          url: `data:${imageFile.type};base64,${base64}`
+        }
+      });
+    }
 
     // Analisar o conteúdo com Lovable AI (Gemini)
     console.log('Analisando contexto com IA...');
+    
+    // Construir mensagem com texto e imagens
+    const userContent: any[] = [];
+    
+    if (allTranscriptions) {
+      userContent.push({
+        type: "text",
+        text: `Analise o seguinte conteúdo de mídia:\n\n${allTranscriptions}`
+      });
+    }
+    
+    if (imageContents.length > 0) {
+      userContent.push({
+        type: "text",
+        text: `\n\nAlém das transcrições acima, também foram fornecidas ${imageContents.length} imagem(ns). Analise o conteúdo visual e integre com o contexto das transcrições:`
+      });
+      userContent.push(...imageContents);
+    }
+    
     const analysisResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -59,16 +112,16 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `Você é um assistente especializado em análise de conteúdo de vídeos.
-Sua tarefa é analisar transcrições de vídeos e fornecer:
-1. Um resumo claro do contexto geral
-2. Os principais tópicos discutidos
-3. Problemas, desafios ou questões mencionadas
-4. Insights e observações importantes
+            content: `Você é um assistente especializado em análise de conteúdo multimídia (vídeos, áudios e imagens).
+Sua tarefa é analisar transcrições e imagens fornecidas e fornecer:
+1. Um resumo claro do contexto geral integrando todos os elementos
+2. Os principais tópicos discutidos ou mostrados
+3. Problemas, desafios ou questões mencionadas ou visíveis
+4. Insights e observações importantes baseados em todo o conteúdo
 
 Formate sua resposta em JSON com a seguinte estrutura:
 {
-  "contexto": "resumo geral do vídeo",
+  "contexto": "resumo geral integrando texto e imagens",
   "topicos": ["tópico 1", "tópico 2", ...],
   "problemas": ["problema 1", "problema 2", ...],
   "insights": ["insight 1", "insight 2", ...]
@@ -76,7 +129,7 @@ Formate sua resposta em JSON com a seguinte estrutura:
           },
           {
             role: 'user',
-            content: `Analise a seguinte transcrição de vídeo:\n\n${transcription.text}`
+            content: userContent
           }
         ],
         response_format: { type: "json_object" }
@@ -104,8 +157,8 @@ Formate sua resposta em JSON com a seguinte estrutura:
 
     return new Response(
       JSON.stringify({
-        transcricao: transcription.text,
-        segmentos: transcription.segments || [],
+        transcricao: allTranscriptions || 'Nenhuma transcrição de áudio disponível',
+        segmentos: allSegments,
         analise: analysis
       }),
       {

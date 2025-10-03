@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 interface VideoUploadProps {
-  onUpload: (file: File) => void;
+  onUpload: (files: File[]) => void;
   isAnalyzing: boolean;
 }
 
@@ -12,17 +12,21 @@ const VideoUpload = ({ onUpload, isAnalyzing }: VideoUploadProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      onUpload(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      onUpload(files);
     }
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('video/')) {
-      onUpload(file);
+    const files = Array.from(e.dataTransfer.files).filter(
+      file => file.type.startsWith('video/') || 
+              file.type.startsWith('audio/') || 
+              file.type.startsWith('image/')
+    );
+    if (files.length > 0) {
+      onUpload(files);
     }
   };
 
@@ -46,10 +50,10 @@ const VideoUpload = ({ onUpload, isAnalyzing }: VideoUploadProps) => {
 
         <div className="space-y-2">
           <h3 className="text-2xl font-semibold">
-            Arraste e solte seu vídeo aqui
+            Arraste e solte seus arquivos aqui
           </h3>
           <p className="text-muted-foreground">
-            ou clique para selecionar um arquivo
+            Vídeos, áudios e imagens - ou clique para selecionar
           </p>
         </div>
 
@@ -63,16 +67,17 @@ const VideoUpload = ({ onUpload, isAnalyzing }: VideoUploadProps) => {
           }}
         >
           <Upload className="w-5 h-5 mr-2" />
-          Escolher Vídeo
+          Escolher Arquivos
         </Button>
 
         <input
           ref={fileInputRef}
           type="file"
-          accept="video/*,audio/*"
+          accept="video/*,audio/*,image/*"
           onChange={handleFileSelect}
           className="hidden"
           disabled={isAnalyzing}
+          multiple
         />
       </div>
     </Card>
