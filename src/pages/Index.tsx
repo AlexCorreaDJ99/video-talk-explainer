@@ -26,11 +26,14 @@ const Index = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<VideoAnalysis | null>(null);
   const [showReport, setShowReport] = useState(false);
+  const [addingEvidence, setAddingEvidence] = useState(false);
   const { toast } = useToast();
 
   const handleVideoUpload = async (files: File[]) => {
     setIsAnalyzing(true);
-    setAnalysis(null);
+    if (!addingEvidence) {
+      setAnalysis(null);
+    }
 
     try {
       const formData = new FormData();
@@ -56,12 +59,29 @@ const Index = () => {
         throw new Error(errorData.error || 'Erro ao processar arquivos');
       }
 
-      const data = await response.json();
-      setAnalysis(data);
+      const newData = await response.json();
+      
+      // Se está adicionando evidências, combina com análise anterior
+      if (addingEvidence && analysis) {
+        setAnalysis({
+          transcricao: `${analysis.transcricao}\n\n--- Nova Evidência ---\n${newData.transcricao}`,
+          segmentos: [...analysis.segmentos, ...newData.segmentos],
+          analise: {
+            contexto: `${analysis.analise.contexto}\n\nContexto adicional: ${newData.analise.contexto}`,
+            topicos: [...new Set([...analysis.analise.topicos, ...newData.analise.topicos])],
+            problemas: [...new Set([...analysis.analise.problemas, ...newData.analise.problemas])],
+            insights: [...new Set([...analysis.analise.insights, ...newData.analise.insights])],
+          }
+        });
+      } else {
+        setAnalysis(newData);
+      }
+
+      setAddingEvidence(false);
 
       toast({
-        title: "Análise concluída!",
-        description: "Seus arquivos foram processados com sucesso.",
+        title: addingEvidence ? "Novas evidências adicionadas!" : "Análise concluída!",
+        description: addingEvidence ? "As evidências foram combinadas com a análise anterior." : "Seus arquivos foram processados com sucesso.",
       });
     } catch (error) {
       console.error('Erro:', error);
@@ -70,6 +90,7 @@ const Index = () => {
         title: "Erro no processamento",
         description: error instanceof Error ? error.message : "Não foi possível processar os arquivos",
       });
+      setAddingEvidence(false);
     } finally {
       setIsAnalyzing(false);
     }
@@ -92,7 +113,7 @@ const Index = () => {
         </header>
 
         {/* Upload Section */}
-        {!analysis && !showReport && (
+        {(!analysis || addingEvidence) && !showReport && (
           <div className="max-w-3xl mx-auto">
             <VideoUpload
               onUpload={handleVideoUpload}
@@ -103,7 +124,9 @@ const Index = () => {
               <Card className="mt-8 p-8 text-center space-y-4 border-2 border-primary/20 bg-card/50 backdrop-blur">
                 <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
                 <div className="space-y-2">
-                  <h3 className="text-xl font-semibold">Processando seus arquivos...</h3>
+                  <h3 className="text-xl font-semibold">
+                    {addingEvidence ? "Processando novas evidências..." : "Processando seus arquivos..."}
+                  </h3>
                   <p className="text-muted-foreground">
                     Estamos transcrevendo áudios, analisando imagens e processando o conteúdo. Isso pode levar alguns minutos.
                   </p>
@@ -114,11 +137,19 @@ const Index = () => {
         )}
 
         {/* Results Section */}
-        {analysis && !isAnalyzing && !showReport && (
+        {analysis && !isAnalyzing && !showReport && !addingEvidence && (
           <div className="max-w-6xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <h2 className="text-3xl font-bold">Resultados da Análise</h2>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  onClick={() => setAddingEvidence(true)}
+                  variant="secondary"
+                  className="flex items-center gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  Adicionar Mais Evidências
+                </Button>
                 <Button
                   onClick={() => setShowReport(true)}
                   className="flex items-center gap-2"
@@ -131,6 +162,7 @@ const Index = () => {
                   onClick={() => {
                     setAnalysis(null);
                     setShowReport(false);
+                    setAddingEvidence(false);
                   }}
                 >
                   <Upload className="w-4 h-4 mr-2" />
@@ -146,14 +178,26 @@ const Index = () => {
         {/* Report Section */}
         {showReport && analysis && (
           <div className="max-w-4xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <h2 className="text-3xl font-bold">Relatório para TI</h2>
-              <Button
-                variant="outline"
-                onClick={() => setShowReport(false)}
-              >
-                Voltar para Análise
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowReport(false);
+                    setAddingEvidence(true);
+                  }}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Adicionar Mais Evidências
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowReport(false)}
+                >
+                  Voltar para Análise
+                </Button>
+              </div>
             </div>
             <ITReportForm analysisData={analysis} />
           </div>
