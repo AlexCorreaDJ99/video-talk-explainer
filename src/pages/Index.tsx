@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Upload, Loader2, Video, AlertCircle } from "lucide-react";
+import { Upload, Loader2, Video, AlertCircle, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import VideoUpload from "@/components/VideoUpload";
 import VideoAnalysisResults from "@/components/VideoAnalysisResults";
+import { ITReportForm } from "@/components/ITReportForm";
 
 export interface VideoAnalysis {
   transcricao: string;
@@ -77,7 +79,7 @@ const Index = () => {
     <main className="min-h-screen bg-gradient-to-b from-background to-card">
       <div className="container mx-auto px-4 py-12">
         {/* Hero Section */}
-        <header className="text-center mb-16 space-y-4">
+        <header className="text-center mb-12 space-y-4">
           <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-primary/10 mb-4">
             <Video className="w-8 h-8 text-primary" />
           </div>
@@ -85,64 +87,83 @@ const Index = () => {
             Análise Inteligente de Mídia
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Faça upload de vídeos, áudios e imagens juntos para obter análise completa com contexto enriquecido
+            Faça upload de vídeos, áudios e imagens ou crie relatórios para o TI
           </p>
         </header>
 
-        {/* Upload Section */}
-        {!analysis && (
-          <div className="max-w-3xl mx-auto">
-            <VideoUpload
-              onUpload={handleVideoUpload}
-              isAnalyzing={isAnalyzing}
-            />
+        <Tabs defaultValue="analysis" className="w-full">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
+            <TabsTrigger value="analysis" className="flex items-center gap-2">
+              <Video className="h-4 w-4" />
+              Análise de Mídia
+            </TabsTrigger>
+            <TabsTrigger value="report" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Relatório TI
+            </TabsTrigger>
+          </TabsList>
 
-            {isAnalyzing && (
-              <Card className="mt-8 p-8 text-center space-y-4 border-2 border-primary/20 bg-card/50 backdrop-blur">
-                <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-                <div className="space-y-2">
-                  <h3 className="text-xl font-semibold">Processando seus arquivos...</h3>
+          <TabsContent value="analysis">
+            {/* Upload Section */}
+            {!analysis && (
+              <div className="max-w-3xl mx-auto">
+                <VideoUpload
+                  onUpload={handleVideoUpload}
+                  isAnalyzing={isAnalyzing}
+                />
+
+                {isAnalyzing && (
+                  <Card className="mt-8 p-8 text-center space-y-4 border-2 border-primary/20 bg-card/50 backdrop-blur">
+                    <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
+                    <div className="space-y-2">
+                      <h3 className="text-xl font-semibold">Processando seus arquivos...</h3>
+                      <p className="text-muted-foreground">
+                        Estamos transcrevendo áudios, analisando imagens e processando o conteúdo. Isso pode levar alguns minutos.
+                      </p>
+                    </div>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {/* Results Section */}
+            {analysis && !isAnalyzing && (
+              <div className="max-w-6xl mx-auto space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-3xl font-bold">Resultados da Análise</h2>
+                  <Button
+                    variant="outline"
+                    onClick={() => setAnalysis(null)}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Nova Análise
+                  </Button>
+                </div>
+
+                <VideoAnalysisResults analysis={analysis} />
+              </div>
+            )}
+
+            {/* Info Footer */}
+            <footer className="mt-16 text-center">
+              <Card className="inline-flex items-start gap-3 p-4 bg-accent/5 border-accent/20">
+                <AlertCircle className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                <div className="text-left text-sm">
+                  <p className="font-medium text-foreground">
+                    Vídeos: MP4, MOV, WEBM | Áudios: M4A, MP3, WAV | Imagens: JPG, PNG, WEBP
+                  </p>
                   <p className="text-muted-foreground">
-                    Estamos transcrevendo áudios, analisando imagens e processando o conteúdo. Isso pode levar alguns minutos.
+                    Envie múltiplos arquivos juntos para análise com mais contexto
                   </p>
                 </div>
               </Card>
-            )}
-          </div>
-        )}
+            </footer>
+          </TabsContent>
 
-        {/* Results Section */}
-        {analysis && !isAnalyzing && (
-          <div className="max-w-6xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-3xl font-bold">Resultados da Análise</h2>
-              <Button
-                variant="outline"
-                onClick={() => setAnalysis(null)}
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Nova Análise
-              </Button>
-            </div>
-
-            <VideoAnalysisResults analysis={analysis} />
-          </div>
-        )}
-
-        {/* Info Footer */}
-        <footer className="mt-16 text-center">
-          <Card className="inline-flex items-start gap-3 p-4 bg-accent/5 border-accent/20">
-            <AlertCircle className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
-            <div className="text-left text-sm">
-              <p className="font-medium text-foreground">
-                Vídeos: MP4, MOV, WEBM | Áudios: M4A, MP3, WAV | Imagens: JPG, PNG, WEBP
-              </p>
-              <p className="text-muted-foreground">
-                Envie múltiplos arquivos juntos para análise com mais contexto
-              </p>
-            </div>
-          </Card>
-        </footer>
+          <TabsContent value="report">
+            <ITReportForm />
+          </TabsContent>
+        </Tabs>
       </div>
     </main>
   );
