@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, Download, FileText } from "lucide-react";
+import { VideoAnalysis } from "@/pages/Index";
 
 const reportSchema = z.object({
   atendente: z.string().min(1, "Nome do atendente é obrigatório"),
@@ -27,10 +28,14 @@ const reportSchema = z.object({
 
 type ReportFormData = z.infer<typeof reportSchema>;
 
-export function ITReportForm() {
+interface ITReportFormProps {
+  analysisData?: VideoAnalysis;
+}
+
+export function ITReportForm({ analysisData }: ITReportFormProps) {
   const [generatedReport, setGeneratedReport] = useState<string>("");
   const { toast } = useToast();
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<ReportFormData>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<ReportFormData>({
     resolver: zodResolver(reportSchema),
     defaultValues: {
       versaoAndroid: false,
@@ -41,6 +46,17 @@ export function ITReportForm() {
       dataReclamacao: new Date().toLocaleDateString('pt-BR'),
     }
   });
+
+  useEffect(() => {
+    if (analysisData) {
+      const descricao = analysisData.analise?.contexto || analysisData.transcricao || "";
+      const problemas = analysisData.analise?.problemas?.join("\n") || "";
+      const impacto = analysisData.analise?.insights?.join("\n") || "";
+      
+      setValue("descricao", `${descricao}\n\n${problemas}`);
+      setValue("impacto", impacto);
+    }
+  }, [analysisData, setValue]);
 
   const watchedValues = watch();
 

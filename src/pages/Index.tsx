@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Upload, Loader2, Video, AlertCircle, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import VideoUpload from "@/components/VideoUpload";
 import VideoAnalysisResults from "@/components/VideoAnalysisResults";
@@ -26,6 +25,7 @@ export interface VideoAnalysis {
 const Index = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<VideoAnalysis | null>(null);
+  const [showReport, setShowReport] = useState(false);
   const { toast } = useToast();
 
   const handleVideoUpload = async (files: File[]) => {
@@ -87,83 +87,94 @@ const Index = () => {
             Análise Inteligente de Mídia
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Faça upload de vídeos, áudios e imagens ou crie relatórios para o TI
+            Faça upload de vídeos, áudios e imagens para análise e geração de relatório
           </p>
         </header>
 
-        <Tabs defaultValue="analysis" className="w-full">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
-            <TabsTrigger value="analysis" className="flex items-center gap-2">
-              <Video className="h-4 w-4" />
-              Análise de Mídia
-            </TabsTrigger>
-            <TabsTrigger value="report" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Relatório TI
-            </TabsTrigger>
-          </TabsList>
+        {/* Upload Section */}
+        {!analysis && !showReport && (
+          <div className="max-w-3xl mx-auto">
+            <VideoUpload
+              onUpload={handleVideoUpload}
+              isAnalyzing={isAnalyzing}
+            />
 
-          <TabsContent value="analysis">
-            {/* Upload Section */}
-            {!analysis && (
-              <div className="max-w-3xl mx-auto">
-                <VideoUpload
-                  onUpload={handleVideoUpload}
-                  isAnalyzing={isAnalyzing}
-                />
-
-                {isAnalyzing && (
-                  <Card className="mt-8 p-8 text-center space-y-4 border-2 border-primary/20 bg-card/50 backdrop-blur">
-                    <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-                    <div className="space-y-2">
-                      <h3 className="text-xl font-semibold">Processando seus arquivos...</h3>
-                      <p className="text-muted-foreground">
-                        Estamos transcrevendo áudios, analisando imagens e processando o conteúdo. Isso pode levar alguns minutos.
-                      </p>
-                    </div>
-                  </Card>
-                )}
-              </div>
-            )}
-
-            {/* Results Section */}
-            {analysis && !isAnalyzing && (
-              <div className="max-w-6xl mx-auto space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-3xl font-bold">Resultados da Análise</h2>
-                  <Button
-                    variant="outline"
-                    onClick={() => setAnalysis(null)}
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    Nova Análise
-                  </Button>
-                </div>
-
-                <VideoAnalysisResults analysis={analysis} />
-              </div>
-            )}
-
-            {/* Info Footer */}
-            <footer className="mt-16 text-center">
-              <Card className="inline-flex items-start gap-3 p-4 bg-accent/5 border-accent/20">
-                <AlertCircle className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
-                <div className="text-left text-sm">
-                  <p className="font-medium text-foreground">
-                    Vídeos: MP4, MOV, WEBM | Áudios: M4A, MP3, WAV | Imagens: JPG, PNG, WEBP
-                  </p>
+            {isAnalyzing && (
+              <Card className="mt-8 p-8 text-center space-y-4 border-2 border-primary/20 bg-card/50 backdrop-blur">
+                <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
+                <div className="space-y-2">
+                  <h3 className="text-xl font-semibold">Processando seus arquivos...</h3>
                   <p className="text-muted-foreground">
-                    Envie múltiplos arquivos juntos para análise com mais contexto
+                    Estamos transcrevendo áudios, analisando imagens e processando o conteúdo. Isso pode levar alguns minutos.
                   </p>
                 </div>
               </Card>
-            </footer>
-          </TabsContent>
+            )}
+          </div>
+        )}
 
-          <TabsContent value="report">
-            <ITReportForm />
-          </TabsContent>
-        </Tabs>
+        {/* Results Section */}
+        {analysis && !isAnalyzing && !showReport && (
+          <div className="max-w-6xl mx-auto space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-bold">Resultados da Análise</h2>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setShowReport(true)}
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  Gerar Relatório para TI
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setAnalysis(null);
+                    setShowReport(false);
+                  }}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Nova Análise
+                </Button>
+              </div>
+            </div>
+
+            <VideoAnalysisResults analysis={analysis} />
+          </div>
+        )}
+
+        {/* Report Section */}
+        {showReport && analysis && (
+          <div className="max-w-4xl mx-auto space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-bold">Relatório para TI</h2>
+              <Button
+                variant="outline"
+                onClick={() => setShowReport(false)}
+              >
+                Voltar para Análise
+              </Button>
+            </div>
+            <ITReportForm analysisData={analysis} />
+          </div>
+        )}
+
+        {/* Info Footer */}
+        {!showReport && (
+          <footer className="mt-16 text-center">
+            <Card className="inline-flex items-start gap-3 p-4 bg-accent/5 border-accent/20">
+              <AlertCircle className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+              <div className="text-left text-sm">
+                <p className="font-medium text-foreground">
+                  Vídeos: MP4, MOV, WEBM | Áudios: M4A, MP3, WAV | Imagens: JPG, PNG, WEBP
+                </p>
+                <p className="text-muted-foreground">
+                  Envie múltiplos arquivos juntos para análise com mais contexto
+                </p>
+              </div>
+            </Card>
+          </footer>
+        )}
       </div>
     </main>
   );
