@@ -14,7 +14,97 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analyses: {
+        Row: {
+          analise_data: Json | null
+          conversation_id: string
+          created_at: string | null
+          id: string
+          transcricao: string | null
+        }
+        Insert: {
+          analise_data?: Json | null
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          transcricao?: string | null
+        }
+        Update: {
+          analise_data?: Json | null
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          transcricao?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analyses_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          atendente: string
+          cliente: string
+          created_at: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          atendente: string
+          cliente: string
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          atendente?: string
+          cliente?: string
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      evidences: {
+        Row: {
+          analysis_id: string
+          conteudo: string | null
+          created_at: string | null
+          id: string
+          nome_arquivo: string | null
+          tipo: string
+        }
+        Insert: {
+          analysis_id: string
+          conteudo?: string | null
+          created_at?: string | null
+          id?: string
+          nome_arquivo?: string | null
+          tipo: string
+        }
+        Update: {
+          analysis_id?: string
+          conteudo?: string | null
+          created_at?: string | null
+          id?: string
+          nome_arquivo?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidences_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
