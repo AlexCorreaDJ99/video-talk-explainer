@@ -29,7 +29,7 @@ const Index = () => {
   const [addingEvidence, setAddingEvidence] = useState(false);
   const { toast } = useToast();
 
-  const handleVideoUpload = async (files: File[]) => {
+  const handleVideoUpload = async (files: File[], pastedText?: string) => {
     setIsAnalyzing(true);
     if (!addingEvidence) {
       setAnalysis(null);
@@ -45,6 +45,10 @@ const Index = () => {
           formData.append(`image_${index}`, file);
         }
       });
+
+      if (pastedText) {
+        formData.append('pasted_text', pastedText);
+      }
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-video`,

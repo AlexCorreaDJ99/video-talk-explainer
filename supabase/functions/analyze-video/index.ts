@@ -17,17 +17,20 @@ serve(async (req) => {
     // Coletar todos os arquivos de mídia e imagens
     const mediaFiles: File[] = [];
     const imageFiles: File[] = [];
+    let pastedText = '';
     
     for (const [key, value] of formData.entries()) {
       if (key.startsWith('media_') && value instanceof File) {
         mediaFiles.push(value);
       } else if (key.startsWith('image_') && value instanceof File) {
         imageFiles.push(value);
+      } else if (key === 'pasted_text' && typeof value === 'string') {
+        pastedText = value;
       }
     }
 
-    if (mediaFiles.length === 0 && imageFiles.length === 0) {
-      throw new Error('Nenhum arquivo fornecido');
+    if (mediaFiles.length === 0 && imageFiles.length === 0 && !pastedText) {
+      throw new Error('Nenhum arquivo ou texto fornecido');
     }
 
     console.log(`Processando ${mediaFiles.length} arquivo(s) de mídia e ${imageFiles.length} imagem(ns)`);
@@ -93,10 +96,17 @@ serve(async (req) => {
       });
     }
     
+    if (pastedText) {
+      userContent.push({
+        type: "text",
+        text: `\n\nTexto colado pelo usuário (conversas, mensagens):\n\n${pastedText}`
+      });
+    }
+    
     if (imageContents.length > 0) {
       userContent.push({
         type: "text",
-        text: `\n\nAlém das transcrições acima, também foram fornecidas ${imageContents.length} imagem(ns). Analise o conteúdo visual e integre com o contexto das transcrições:`
+        text: `\n\nAlém do conteúdo acima, também foram fornecidas ${imageContents.length} imagem(ns). Analise o conteúdo visual e integre com o contexto:`
       });
       userContent.push(...imageContents);
     }
@@ -155,9 +165,14 @@ Formate sua resposta em JSON com a seguinte estrutura:
 
     console.log('Análise completa');
 
+    // Combinar todo o conteúdo textual
+    let fullTranscription = '';
+    if (allTranscriptions) fullTranscription += allTranscriptions;
+    if (pastedText) fullTranscription += `\n\n[Texto Colado]\n${pastedText}`;
+    
     return new Response(
       JSON.stringify({
-        transcricao: allTranscriptions || 'Nenhuma transcrição de áudio disponível',
+        transcricao: fullTranscription || 'Nenhum conteúdo textual disponível',
         segmentos: allSegments,
         analise: analysis
       }),
