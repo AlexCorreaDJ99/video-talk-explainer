@@ -30,14 +30,20 @@ type ReportFormData = z.infer<typeof reportSchema>;
 
 interface ITReportFormProps {
   analysisData?: VideoAnalysis;
+  defaultValues?: {
+    atendente?: string;
+    cliente?: string;
+  };
 }
 
-export function ITReportForm({ analysisData }: ITReportFormProps) {
+export function ITReportForm({ analysisData, defaultValues }: ITReportFormProps) {
   const [generatedReport, setGeneratedReport] = useState<string>("");
   const { toast } = useToast();
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<ReportFormData>({
     resolver: zodResolver(reportSchema),
     defaultValues: {
+      atendente: defaultValues?.atendente || "",
+      cliente: defaultValues?.cliente || "",
       versaoAndroid: false,
       versaoIOS: false,
       appMotorista: false,
