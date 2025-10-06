@@ -33,6 +33,7 @@ const Index = () => {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [currentConversation, setCurrentConversation] = useState<{ cliente: string; atendente: string } | null>(null);
   const [showNewConversationDialog, setShowNewConversationDialog] = useState(false);
+  const [conversationsRefresh, setConversationsRefresh] = useState(0);
   const { toast } = useToast();
 
   // Carregar conversa selecionada
@@ -106,6 +107,7 @@ const Index = () => {
       setAnalysis(null);
       setShowReport(false);
       setAddingEvidence(false);
+      setConversationsRefresh(prev => prev + 1);
 
       toast({
         title: "Conversa criada!",
@@ -233,6 +235,7 @@ const Index = () => {
             selectedConversationId={selectedConversationId}
             onSelectConversation={setSelectedConversationId}
             onNewConversation={handleNewConversation}
+            refreshTrigger={conversationsRefresh}
           />
         </div>
 

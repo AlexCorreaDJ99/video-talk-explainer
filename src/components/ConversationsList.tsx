@@ -20,12 +20,14 @@ interface ConversationsListProps {
   selectedConversationId: string | null;
   onSelectConversation: (id: string | null) => void;
   onNewConversation: () => void;
+  refreshTrigger?: number;
 }
 
 export function ConversationsList({ 
   selectedConversationId, 
   onSelectConversation,
-  onNewConversation 
+  onNewConversation,
+  refreshTrigger 
 }: ConversationsListProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -33,7 +35,7 @@ export function ConversationsList({
 
   useEffect(() => {
     loadConversations();
-  }, []);
+  }, [refreshTrigger]);
 
   const loadConversations = async () => {
     try {
