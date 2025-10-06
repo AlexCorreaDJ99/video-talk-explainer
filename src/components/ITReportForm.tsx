@@ -151,11 +151,19 @@ ${data.evidencias || 'Sem evidências anexadas.'}`;
               <Label>Versão do App *</Label>
               <div className="flex gap-6">
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="versaoAndroid" {...register("versaoAndroid")} />
+                  <Checkbox 
+                    id="versaoAndroid" 
+                    checked={watchedValues.versaoAndroid}
+                    onCheckedChange={(checked) => setValue("versaoAndroid", checked as boolean)}
+                  />
                   <Label htmlFor="versaoAndroid" className="font-normal">Android</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="versaoIOS" {...register("versaoIOS")} />
+                  <Checkbox 
+                    id="versaoIOS" 
+                    checked={watchedValues.versaoIOS}
+                    onCheckedChange={(checked) => setValue("versaoIOS", checked as boolean)}
+                  />
                   <Label htmlFor="versaoIOS" className="font-normal">iOS</Label>
                 </div>
               </div>
@@ -165,11 +173,19 @@ ${data.evidencias || 'Sem evidências anexadas.'}`;
               <Label>Tipo de App *</Label>
               <div className="flex gap-6">
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="appMotorista" {...register("appMotorista")} />
+                  <Checkbox 
+                    id="appMotorista" 
+                    checked={watchedValues.appMotorista}
+                    onCheckedChange={(checked) => setValue("appMotorista", checked as boolean)}
+                  />
                   <Label htmlFor="appMotorista" className="font-normal">Motorista</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="appPassageiro" {...register("appPassageiro")} />
+                  <Checkbox 
+                    id="appPassageiro" 
+                    checked={watchedValues.appPassageiro}
+                    onCheckedChange={(checked) => setValue("appPassageiro", checked as boolean)}
+                  />
                   <Label htmlFor="appPassageiro" className="font-normal">Passageiro</Label>
                 </div>
               </div>
@@ -186,7 +202,11 @@ ${data.evidencias || 'Sem evidências anexadas.'}`;
             <div className="space-y-3">
               <Label>Compromete o funcionamento básico? *</Label>
               <div className="flex items-center space-x-2">
-                <Checkbox id="comprometeFunc" {...register("comprometeFunc")} />
+                <Checkbox 
+                  id="comprometeFunc" 
+                  checked={watchedValues.comprometeFunc}
+                  onCheckedChange={(checked) => setValue("comprometeFunc", checked as boolean)}
+                />
                 <Label htmlFor="comprometeFunc" className="font-normal">Sim</Label>
               </div>
             </div>
