@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageSquare, Lightbulb, AlertTriangle, List } from "lucide-react";
 import type { VideoAnalysis } from "@/pages/Index";
+import { AnalysisBadge } from "@/components/AnalysisBadge";
 
 interface VideoAnalysisResultsProps {
   analysis: VideoAnalysis;
@@ -12,6 +13,23 @@ interface VideoAnalysisResultsProps {
 const VideoAnalysisResults = ({ analysis }: VideoAnalysisResultsProps) => {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Analysis Badges */}
+      {(analysis.analise as any).urgencia && (
+        <Card className="p-4">
+          <div className="flex flex-wrap gap-3 items-center">
+            <span className="text-sm font-medium text-muted-foreground">Classificação:</span>
+            <AnalysisBadge type="urgencia" value={(analysis.analise as any).urgencia} />
+            <AnalysisBadge type="sentimento" value={(analysis.analise as any).sentimento} />
+            <AnalysisBadge type="categoria" value={(analysis.analise as any).categoria} />
+          </div>
+          {(analysis.analise as any).resumo_curto && (
+            <p className="mt-3 text-sm text-muted-foreground">
+              <strong>Resumo:</strong> {(analysis.analise as any).resumo_curto}
+            </p>
+          )}
+        </Card>
+      )}
+
       {/* Context Summary */}
       <Card className="p-6 border-2 border-primary/20 bg-gradient-to-br from-card to-card/50 backdrop-blur">
         <div className="flex items-start gap-3 mb-4">

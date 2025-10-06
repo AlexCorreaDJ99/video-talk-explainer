@@ -128,13 +128,21 @@ Sua tarefa é analisar transcrições e imagens fornecidas e fornecer:
 2. Os principais tópicos discutidos ou mostrados
 3. Problemas, desafios ou questões mencionadas ou visíveis
 4. Insights e observações importantes baseados em todo o conteúdo
+5. Análise de sentimento do cliente (positivo, neutro, frustrado, irritado, confuso)
+6. Nível de urgência do caso (baixa, media, alta, critica)
+7. Categoria do problema (bug, duvida, funcionalidade, pagamento, desempenho, outro)
+8. Resumo ultra-conciso em no máximo 100 caracteres
 
 Formate sua resposta em JSON com a seguinte estrutura:
 {
   "contexto": "resumo geral integrando texto e imagens",
   "topicos": ["tópico 1", "tópico 2", ...],
   "problemas": ["problema 1", "problema 2", ...],
-  "insights": ["insight 1", "insight 2", ...]
+  "insights": ["insight 1", "insight 2", ...],
+  "sentimento": "positivo|neutro|frustrado|irritado|confuso",
+  "urgencia": "baixa|media|alta|critica",
+  "categoria": "bug|duvida|funcionalidade|pagamento|desempenho|outro",
+  "resumo_curto": "resumo em até 100 caracteres"
 }`
           },
           {

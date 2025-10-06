@@ -4,9 +4,11 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageSquare, Search, Plus } from "lucide-react";
+import { MessageSquare, Search, Plus, BarChart3 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { AnalysisBadge } from "@/components/AnalysisBadge";
+import { useNavigate } from "react-router-dom";
 
 interface Conversation {
   id: string;
@@ -14,6 +16,13 @@ interface Conversation {
   atendente: string;
   created_at: string;
   updated_at: string;
+  analyses?: Array<{
+    analise_data: {
+      urgencia?: string;
+      sentimento?: string;
+      resumo_curto?: string;
+    };
+  }>;
 }
 
 interface ConversationsListProps {
@@ -29,6 +38,7 @@ export function ConversationsList({
   onNewConversation,
   refreshTrigger 
 }: ConversationsListProps) {
+  const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -41,11 +51,16 @@ export function ConversationsList({
     try {
       const { data, error } = await supabase
         .from("conversations")
-        .select("*")
+        .select(`
+          *,
+          analyses (
+            analise_data
+          )
+        `)
         .order("updated_at", { ascending: false });
 
       if (error) throw error;
-      setConversations(data || []);
+      setConversations(data as any || []);
     } catch (error) {
       console.error("Erro ao carregar conversas:", error);
     } finally {
@@ -67,14 +82,23 @@ export function ConversationsList({
             <MessageSquare className="w-5 h-5" />
             Conversas
           </h2>
-          <Button 
-            size="sm" 
-            onClick={onNewConversation}
-            className="gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Nova
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => navigate("/dashboard")}
+            >
+              <BarChart3 className="w-4 h-4" />
+            </Button>
+            <Button 
+              size="sm" 
+              onClick={onNewConversation}
+              className="gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Nova
+            </Button>
+          </div>
         </div>
         
         <div className="relative">
@@ -99,28 +123,46 @@ export function ConversationsList({
               {searchTerm ? "Nenhuma conversa encontrada" : "Nenhuma conversa ainda"}
             </div>
           ) : (
-            filteredConversations.map((conv) => (
-              <button
-                key={conv.id}
-                onClick={() => onSelectConversation(conv.id)}
-                className={`w-full text-left p-3 rounded-lg transition-colors hover:bg-accent ${
-                  selectedConversationId === conv.id
-                    ? "bg-accent border-2 border-primary"
-                    : "border border-transparent"
-                }`}
-              >
-                <div className="font-medium text-sm truncate">{conv.cliente}</div>
-                <div className="text-xs text-muted-foreground truncate">
-                  Atendente: {conv.atendente}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {formatDistanceToNow(new Date(conv.updated_at), {
-                    addSuffix: true,
-                    locale: ptBR,
-                  })}
-                </div>
-              </button>
-            ))
+            filteredConversations.map((conv) => {
+              const lastAnalysis = conv.analyses?.[0]?.analise_data;
+              return (
+                <button
+                  key={conv.id}
+                  onClick={() => onSelectConversation(conv.id)}
+                  className={`w-full text-left p-3 rounded-lg transition-colors hover:bg-accent ${
+                    selectedConversationId === conv.id
+                      ? "bg-accent border-2 border-primary"
+                      : "border border-transparent"
+                  }`}
+                >
+                  <div className="space-y-2">
+                    <div className="font-medium text-sm truncate">{conv.cliente}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      Atendente: {conv.atendente}
+                    </div>
+                    {lastAnalysis?.resumo_curto && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {lastAnalysis.resumo_curto}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-1">
+                      {lastAnalysis?.urgencia && (
+                        <AnalysisBadge type="urgencia" value={lastAnalysis.urgencia} size="sm" />
+                      )}
+                      {lastAnalysis?.sentimento && (
+                        <AnalysisBadge type="sentimento" value={lastAnalysis.sentimento} size="sm" />
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {formatDistanceToNow(new Date(conv.updated_at), {
+                        addSuffix: true,
+                        locale: ptBR,
+                      })}
+                    </div>
+                  </div>
+                </button>
+              );
+            })
           )}
         </div>
       </ScrollArea>
