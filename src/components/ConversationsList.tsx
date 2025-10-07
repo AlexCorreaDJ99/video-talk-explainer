@@ -202,10 +202,10 @@ export function ConversationsList({
             filteredConversations.map((conv) => {
               const lastAnalysis = conv.analyses?.[0]?.analise_data;
               return (
-                <button
+                <div
                   key={conv.id}
                   onClick={() => onSelectConversation(conv.id)}
-                  className={`w-full text-left p-3 rounded-lg transition-colors hover:bg-accent ${
+                  className={`w-full text-left p-3 rounded-lg transition-colors hover:bg-accent cursor-pointer ${
                     selectedConversationId === conv.id
                       ? "bg-accent border-2 border-primary"
                       : "border border-transparent"
@@ -230,7 +230,7 @@ export function ConversationsList({
                            <AnalysisBadge type="sentimento" value={lastAnalysis.sentimento} size="sm" />
                          )}
                        </div>
-                       <div className="flex gap-1">
+                       <div className="flex gap-1 shrink-0">
                          {lastAnalysis && (
                            <Button
                              variant="ghost"
@@ -247,6 +247,7 @@ export function ConversationsList({
                                )
                              }
                              className="h-7 w-7 hover:bg-accent"
+                             title="Editar classificação"
                            >
                              <Edit className="w-3.5 h-3.5" />
                            </Button>
@@ -256,6 +257,7 @@ export function ConversationsList({
                            size="icon"
                            onClick={(e) => handleDelete(conv.id, e)}
                            className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                           title="Apagar conversa"
                          >
                            <Trash2 className="w-3.5 h-3.5" />
                          </Button>
@@ -268,7 +270,7 @@ export function ConversationsList({
                        })}
                      </div>
                    </div>
-                 </button>
+                 </div>
               );
             })
           )}
