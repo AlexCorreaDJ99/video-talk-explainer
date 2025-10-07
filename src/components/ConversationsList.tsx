@@ -4,12 +4,13 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageSquare, Search, Plus, BarChart3, Trash2 } from "lucide-react";
+import { MessageSquare, Search, Plus, BarChart3, Trash2, Edit } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AnalysisBadge } from "@/components/AnalysisBadge";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { EditClassificationDialog } from "./EditClassificationDialog";
 
 interface Conversation {
   id: string;
@@ -21,6 +22,7 @@ interface Conversation {
     analise_data: {
       urgencia?: string;
       sentimento?: string;
+      categoria?: string;
       resumo_curto?: string;
     };
   }>;
@@ -44,6 +46,11 @@ export function ConversationsList({
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingConversation, setEditingConversation] = useState<{
+    id: string;
+    data: { urgencia?: string; sentimento?: string; categoria?: string };
+  } | null>(null);
 
   useEffect(() => {
     loadConversations();
@@ -127,6 +134,16 @@ export function ConversationsList({
     }
   };
 
+  const handleEdit = (
+    conversationId: string,
+    data: { urgencia?: string; sentimento?: string; categoria?: string },
+    e: React.MouseEvent
+  ) => {
+    e.stopPropagation();
+    setEditingConversation({ id: conversationId, data });
+    setEditDialogOpen(true);
+  };
+
   const filteredConversations = conversations.filter(
     (conv) =>
       conv.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -205,7 +222,7 @@ export function ConversationsList({
                       </p>
                     )}
                      <div className="flex items-center justify-between gap-2">
-                       <div className="flex flex-wrap gap-1">
+                       <div className="flex flex-wrap gap-1 flex-1">
                          {lastAnalysis?.urgencia && (
                            <AnalysisBadge type="urgencia" value={lastAnalysis.urgencia} size="sm" />
                          )}
@@ -213,14 +230,36 @@ export function ConversationsList({
                            <AnalysisBadge type="sentimento" value={lastAnalysis.sentimento} size="sm" />
                          )}
                        </div>
-                       <Button
-                         variant="ghost"
-                         size="icon"
-                         onClick={(e) => handleDelete(conv.id, e)}
-                         className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                       >
-                         <Trash2 className="w-3.5 h-3.5" />
-                       </Button>
+                       <div className="flex gap-1">
+                         {lastAnalysis && (
+                           <Button
+                             variant="ghost"
+                             size="icon"
+                             onClick={(e) =>
+                               handleEdit(
+                                 conv.id,
+                                 {
+                                   urgencia: lastAnalysis.urgencia,
+                                   sentimento: lastAnalysis.sentimento,
+                                   categoria: lastAnalysis.categoria,
+                                 },
+                                 e
+                               )
+                             }
+                             className="h-7 w-7 hover:bg-accent"
+                           >
+                             <Edit className="w-3.5 h-3.5" />
+                           </Button>
+                         )}
+                         <Button
+                           variant="ghost"
+                           size="icon"
+                           onClick={(e) => handleDelete(conv.id, e)}
+                           className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                         >
+                           <Trash2 className="w-3.5 h-3.5" />
+                         </Button>
+                       </div>
                      </div>
                      <div className="text-xs text-muted-foreground mt-1">
                        {formatDistanceToNow(new Date(conv.updated_at), {
@@ -235,6 +274,16 @@ export function ConversationsList({
           )}
         </div>
       </ScrollArea>
+
+      {editingConversation && (
+        <EditClassificationDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          conversationId={editingConversation.id}
+          currentData={editingConversation.data}
+          onUpdate={loadConversations}
+        />
+      )}
     </Card>
   );
 }
