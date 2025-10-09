@@ -147,45 +147,125 @@ const Index = () => {
     }
 
     try {
-      const formData = new FormData();
+      // Importar serviços dinamicamente
+      const { getStorageMode } = await import("@/lib/storage");
+      const { getAIConfig } = await import("@/lib/ai-service");
       
-      files.forEach((file, index) => {
-        if (file.type.startsWith('video/') || file.type.startsWith('audio/')) {
-          formData.append(`media_${index}`, file);
-        } else if (file.type.startsWith('image/')) {
-          formData.append(`image_${index}`, file);
-        }
-      });
+      const storageMode = getStorageMode();
+      const aiConfig = getAIConfig();
 
-      if (pastedText) {
-        formData.append('pasted_text', pastedText);
-      }
+      // Construir dados para análise
+      let transcricao = pastedText || '';
+      const tipo = files.some(f => f.type.startsWith('video/')) ? 'vídeo' : 
+                   files.some(f => f.type.startsWith('audio/')) ? 'áudio' : 'imagem';
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-video`,
-        {
-          method: 'POST',
-          body: formData,
-        }
-      );
+      let newData;
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        const errorMessage = errorData.error || 'Erro ao processar arquivos';
+      // Se estiver em modo remote e usando Lovable AI, usar edge function
+      if (storageMode === "remote" && aiConfig.provider === "lovable") {
+        const formData = new FormData();
         
-        // Mensagens mais específicas baseadas no erro
-        if (errorMessage.includes('LOVABLE_API_KEY')) {
-          throw new Error('❌ API Key não configurada. Entre em contato com o administrador.');
-        } else if (errorMessage.includes('Limite de requisições')) {
-          throw new Error('⚠️ Limite de requisições excedido. Por favor, aguarde alguns minutos e tente novamente.');
-        } else if (errorMessage.includes('Créditos insuficientes')) {
-          throw new Error('💳 Créditos insuficientes. Por favor, adicione créditos ao workspace.');
-        } else {
-          throw new Error(errorMessage);
-        }
-      }
+        files.forEach((file, index) => {
+          if (file.type.startsWith('video/') || file.type.startsWith('audio/')) {
+            formData.append(`media_${index}`, file);
+          } else if (file.type.startsWith('image/')) {
+            formData.append(`image_${index}`, file);
+          }
+        });
 
-      const newData = await response.json();
+        if (pastedText) {
+          formData.append('pasted_text', pastedText);
+        }
+
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-video`,
+          {
+            method: 'POST',
+            body: formData,
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          const errorMessage = errorData.error || 'Erro ao processar arquivos';
+          
+          if (errorMessage.includes('LOVABLE_API_KEY')) {
+            throw new Error('❌ API Key não configurada. Entre em contato com o administrador.');
+          } else if (errorMessage.includes('Limite de requisições')) {
+            throw new Error('⚠️ Limite de requisições excedido. Aguarde e tente novamente.');
+          } else if (errorMessage.includes('Créditos insuficientes')) {
+            throw new Error('💳 Créditos insuficientes. Adicione créditos ao workspace.');
+          } else {
+            throw new Error(errorMessage);
+          }
+        }
+
+        newData = await response.json();
+      } else {
+        // Modo local ou API externa configurada
+        if (!aiConfig.apiKey && aiConfig.provider !== "lovable") {
+          throw new Error(`Configure a API Key do ${aiConfig.provider} em Configurações antes de continuar.`);
+        }
+
+        // Para modo local, processar com API externa
+        const { analyzeVideo } = await import("@/lib/ai-service");
+        
+        // Construir transcrição combinada
+        if (files.length > 0) {
+          transcricao += '\n\n[Arquivos enviados: ' + files.map(f => f.name).join(', ') + ']';
+          transcricao += '\n\nNOTA: Transcrição de áudio não disponível em modo local. Cole o conteúdo manualmente ou use Lovable AI em modo remoto.';
+        }
+
+        const result = await analyzeVideo({
+          transcricao,
+          tipo,
+        });
+
+        if (result.error) {
+          throw new Error(result.error.message);
+        }
+
+        // Parsear resultado da análise
+        const analiseTexto = result.data?.resultado || '';
+        let analise;
+        
+        try {
+          // Tentar extrair JSON do resultado
+          const jsonMatch = analiseTexto.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            analise = JSON.parse(jsonMatch[0]);
+          } else {
+            // Fallback: criar estrutura básica
+            analise = {
+              contexto: analiseTexto,
+              topicos: [],
+              problemas: [],
+              insights: [],
+              sentimento: 'neutro',
+              urgencia: 'media',
+              categoria: 'outro',
+              resumo_curto: analiseTexto.substring(0, 100),
+            };
+          }
+        } catch (e) {
+          analise = {
+            contexto: analiseTexto,
+            topicos: [],
+            problemas: [],
+            insights: [],
+            sentimento: 'neutro',
+            urgencia: 'media',
+            categoria: 'outro',
+            resumo_curto: 'Análise processada',
+          };
+        }
+
+        newData = {
+          transcricao,
+          segmentos: [],
+          analise,
+        };
+      }
       
       // Salvar análise no banco
       let savedAnalysis;

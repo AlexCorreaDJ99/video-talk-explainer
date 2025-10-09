@@ -29,27 +29,31 @@ export const analyzeVideo = async (data: {
   const storageMode = getStorageMode();
   const aiConfig = getAIConfig();
 
-  // Se estiver em modo remoto e usar Lovable AI, usar edge function
+  // Se estiver em modo remoto e usar Lovable AI, retornar erro para usar edge function
   if (storageMode === "remote" && aiConfig.provider === "lovable") {
-    const { data: result, error } = await supabase.functions.invoke("analyze-video", {
-      body: data,
-    });
-    return { data: result, error };
+    return {
+      data: null,
+      error: { message: "Use a edge function diretamente para Lovable AI em modo remoto" },
+    };
   }
 
-  // Modo local ou API externa
+  // Modo local ou API externa configurada
   return await callExternalAI({
-    prompt: `Analise a seguinte transcrição de ${data.tipo} e retorne um JSON com:
-- urgencia (baixa, media, alta, critica)
-- categoria (tecnico, financeiro, atendimento, operacional, outro)
-- sentimento (positivo, neutro, negativo, frustrado)
-- resumo_curto (máximo 150 caracteres)
-- contexto (descrição detalhada)
-- problemas (array de strings)
-- topicos (array de strings)
-- insights (array de strings)
+    prompt: `Você é um assistente especializado em análise de conteúdo.
+Analise a seguinte transcrição de ${data.tipo} e retorne APENAS um JSON válido (sem markdown, sem explicações) com esta estrutura exata:
 
-Transcrição:
+{
+  "urgencia": "baixa|media|alta|critica",
+  "categoria": "tecnico|financeiro|atendimento|operacional|outro",
+  "sentimento": "positivo|neutro|negativo|frustrado",
+  "resumo_curto": "resumo em até 150 caracteres",
+  "contexto": "descrição detalhada do contexto",
+  "problemas": ["problema 1", "problema 2"],
+  "topicos": ["tópico 1", "tópico 2"],
+  "insights": ["insight 1", "insight 2"]
+}
+
+Transcrição a analisar:
 ${data.transcricao}`,
     config: aiConfig,
   });
