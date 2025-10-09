@@ -215,14 +215,25 @@ const Index = () => {
         
         console.log("[Modo Local] Preparando dados para análise...");
         
+        // Verificar se tem arquivos de áudio/vídeo sem transcrição
+        const hasMediaFiles = files.some(f => f.type.startsWith('video/') || f.type.startsWith('audio/'));
+        const hasOnlyImages = files.length > 0 && files.every(f => f.type.startsWith('image/'));
+        
+        if (hasMediaFiles && !pastedText) {
+          throw new Error(`⚠️ MODO OFFLINE DETECTADO\n\nO sistema detectou que está operando em modo offline e não pode realizar a transcrição automática dos arquivos de áudio e vídeo fornecidos.\n\nOpções disponíveis:\n1. Cole o texto/transcrição manualmente no campo de texto\n2. Use "Lovable AI" em modo remoto (na nuvem) para análise automática\n\nArquivos detectados:\n${files.map((f, i) => `${i + 1}. ${f.name} (${f.type})`).join('\n')}`);
+        }
+        
         // Construir transcrição combinada
         if (files.length > 0) {
           transcricao += '\n\n=== ARQUIVOS ENVIADOS ===\n' + files.map((f, i) => 
             `${i + 1}. ${f.name} (${f.type}) - ${(f.size / 1024).toFixed(2)} KB`
           ).join('\n');
-          transcricao += '\n\n⚠️ MODO OFFLINE DETECTADO\n' +
-                        'Transcrição automática de áudio/vídeo não está disponível em modo local.\n' +
-                        'Por favor, cole o conteúdo manualmente ou use "Lovable AI" em modo remoto para análise automática.\n';
+          
+          if (hasMediaFiles && pastedText) {
+            transcricao += '\n\n✓ Modo offline: Usando transcrição fornecida manualmente.\n';
+          } else if (hasOnlyImages) {
+            transcricao += '\n\n✓ Modo offline: Análise de imagens disponível com as APIs configuradas.\n';
+          }
         }
         
         console.log("[Modo Local] Chamando serviço de análise...");
