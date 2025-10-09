@@ -191,7 +191,10 @@ export const transcribeAudio = async (audioFile: File): Promise<{ data: { text: 
   try {
     const formData = new FormData();
     formData.append('file', audioFile);
-    formData.append('model', 'whisper-1');
+    
+    // Groq usa modelo diferente para Whisper
+    const modelName = provider.provider === "groq" ? "whisper-large-v3" : "whisper-1";
+    formData.append('model', modelName);
     
     let url = "";
     const headers: Record<string, string> = {
