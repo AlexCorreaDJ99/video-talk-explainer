@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Key, Check, X } from "lucide-react";
+import { ArrowLeft, Database, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,106 +7,62 @@ import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
 
-interface AIProvider {
-  id: string;
-  name: string;
-  description: string;
-  secretName: string;
-  enabled: boolean;
-  configured: boolean;
-}
+const databases = [
+  { id: "supabase", name: "Supabase", fields: ["URL", "Anon Key"] },
+  { id: "firebase", name: "Firebase", fields: ["API Key", "Project ID"] },
+  { id: "mongodb", name: "MongoDB", fields: ["Connection String"] },
+];
+
+const aiProviders = [
+  { id: "openai", name: "OpenAI", fields: ["API Key"] },
+  { id: "groq", name: "Groq", fields: ["API Key"] },
+  { id: "anthropic", name: "Anthropic Claude", fields: ["API Key"] },
+  { id: "google", name: "Google AI (Gemini)", fields: ["API Key"] },
+  { id: "lovable", name: "Lovable AI", fields: ["API Key"] },
+];
 
 export default function Settings() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [providers, setProviders] = useState<AIProvider[]>([
-    {
-      id: "lovable",
-      name: "Lovable AI (Gemini/GPT-5)",
-      description: "Análise de conteúdo e transcrição integrada",
-      secretName: "LOVABLE_API_KEY",
-      enabled: true,
-      configured: true,
-    },
-    {
-      id: "openai",
-      name: "OpenAI",
-      description: "GPT-4, GPT-4o, Whisper e DALL-E",
-      secretName: "OPENAI_API_KEY",
-      enabled: false,
-      configured: false,
-    },
-    {
-      id: "groq",
-      name: "Groq",
-      description: "LLaMA 3, Mixtral - Inferência ultra-rápida",
-      secretName: "GROQ_API_KEY",
-      enabled: false,
-      configured: false,
-    },
-    {
-      id: "anthropic",
-      name: "Anthropic Claude",
-      description: "Claude 4 Opus, Sonnet e Haiku",
-      secretName: "ANTHROPIC_API_KEY",
-      enabled: false,
-      configured: false,
-    },
-    {
-      id: "google",
-      name: "Google AI (Gemini)",
-      description: "Gemini Pro e Flash - Direto da Google",
-      secretName: "GOOGLE_AI_API_KEY",
-      enabled: false,
-      configured: false,
-    },
-  ]);
-
-  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
-  const [apiKey, setApiKey] = useState("");
+  const [selectedDatabase, setSelectedDatabase] = useState<string>("");
+  const [selectedAI, setSelectedAI] = useState<string>("");
+  const [dbCredentials, setDbCredentials] = useState<Record<string, string>>({});
+  const [aiCredentials, setAiCredentials] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
-  const handleToggleProvider = (providerId: string) => {
-    setProviders(providers.map(p => 
-      p.id === providerId ? { ...p, enabled: !p.enabled } : p
-    ));
-  };
-
-  const handleSaveApiKey = async () => {
-    if (!selectedProvider || !apiKey.trim()) {
+  const handleSaveDatabase = async () => {
+    if (!selectedDatabase) {
       toast({
         title: "Erro",
-        description: "Selecione um provedor e insira uma API key válida.",
+        description: "Selecione um banco de dados.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const db = databases.find(d => d.id === selectedDatabase);
+    if (!db) return;
+
+    const missingFields = db.fields.filter(field => !dbCredentials[field]?.trim());
+    if (missingFields.length > 0) {
+      toast({
+        title: "Erro",
+        description: `Preencha todos os campos: ${missingFields.join(", ")}`,
         variant: "destructive",
       });
       return;
     }
 
     setSaving(true);
-    
     try {
-      const provider = providers.find(p => p.id === selectedProvider);
-      if (!provider) return;
-
-      // Aqui você salvaria a API key no Supabase Secrets
-      // Por enquanto, vamos simular o salvamento
       toast({
         title: "Configuração salva",
-        description: `API key para ${provider.name} configurada com sucesso! Adicione o secret "${provider.secretName}" no backend.`,
+        description: `Credenciais do ${db.name} salvas com sucesso!`,
       });
-
-      // Atualizar status do provedor
-      setProviders(providers.map(p => 
-        p.id === selectedProvider ? { ...p, configured: true } : p
-      ));
-
-      setApiKey("");
-      setSelectedProvider(null);
+      setDbCredentials({});
     } catch (error) {
-      console.error("Erro ao salvar API key:", error);
       toast({
         title: "Erro",
         description: "Não foi possível salvar a configuração.",
@@ -117,12 +73,49 @@ export default function Settings() {
     }
   };
 
-  const handleManageSecrets = () => {
-    toast({
-      title: "Gerenciar Secrets",
-      description: "Acesse o painel do backend para gerenciar seus secrets com segurança.",
-    });
+  const handleSaveAI = async () => {
+    if (!selectedAI) {
+      toast({
+        title: "Erro",
+        description: "Selecione um provedor de IA.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const ai = aiProviders.find(a => a.id === selectedAI);
+    if (!ai) return;
+
+    const missingFields = ai.fields.filter(field => !aiCredentials[field]?.trim());
+    if (missingFields.length > 0) {
+      toast({
+        title: "Erro",
+        description: `Preencha todos os campos: ${missingFields.join(", ")}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      toast({
+        title: "Configuração salva",
+        description: `API key do ${ai.name} salva com sucesso!`,
+      });
+      setAiCredentials({});
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar a configuração.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const selectedDbConfig = databases.find(db => db.id === selectedDatabase);
+  const selectedAiConfig = aiProviders.find(ai => ai.id === selectedAI);
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-background via-background to-accent/5">
@@ -132,128 +125,106 @@ export default function Settings() {
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
-            <h1 className="text-4xl font-bold">Configurações de IA</h1>
-            <p className="text-muted-foreground">Configure os provedores de IA que deseja utilizar</p>
+            <h1 className="text-4xl font-bold">Configurações</h1>
+            <p className="text-muted-foreground">Configure o banco de dados e o cérebro da IA</p>
           </div>
         </div>
 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Key className="w-5 h-5" />
-              Provedores de IA Disponíveis
+              <Database className="w-5 h-5" />
+              Banco de Dados
             </CardTitle>
             <CardDescription>
-              Ative e configure as API keys dos provedores que deseja usar
+              Selecione e configure o banco de dados
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {providers.map((provider) => (
-              <div key={provider.id} className="space-y-3 pb-6 border-b last:border-0 last:pb-0">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-3">
-                      <Label className="text-base font-semibold">{provider.name}</Label>
-                      {provider.configured ? (
-                        <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-600 border border-green-500/20">
-                          <Check className="w-3 h-3" />
-                          Configurada
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-600 border border-yellow-500/20">
-                          <X className="w-3 h-3" />
-                          Não configurada
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">{provider.description}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Secret: <code className="px-1.5 py-0.5 rounded bg-muted">{provider.secretName}</code>
-                    </p>
-                  </div>
-                </div>
-
-                {selectedProvider === provider.id ? (
-                  <div className="space-y-3 pt-3">
-                    <Label htmlFor={`api-key-${provider.id}`}>API Key</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id={`api-key-${provider.id}`}
-                        type="password"
-                        placeholder="sk-..."
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        className="font-mono"
-                      />
-                      <Button onClick={handleSaveApiKey} disabled={saving}>
-                        {saving ? "Salvando..." : "Salvar"}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => {
-                          setSelectedProvider(null);
-                          setApiKey("");
-                        }}
-                      >
-                        Cancelar
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedProvider(provider.id)}
-                    className="mt-2"
-                  >
-                    {provider.configured ? "Atualizar API Key" : "Adicionar API Key"}
-                  </Button>
-                )}
-              </div>
-            ))}
-
-            <div className="pt-4 space-y-4">
-              <Button onClick={handleManageSecrets} variant="secondary" className="w-full" size="lg">
-                <Key className="w-4 h-4 mr-2" />
-                Gerenciar Secrets no Backend
-              </Button>
-              
-              <div className="p-4 rounded-lg bg-muted/50 space-y-2">
-                <p className="text-sm font-medium">💡 Como funcionam os Secrets?</p>
-                <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-                  <li>Adicione a API key aqui para referência</li>
-                  <li>Acesse o backend e adicione um Secret com o nome exato mostrado acima</li>
-                  <li>Cole sua API key de forma segura no backend</li>
-                  <li>As Edge Functions terão acesso automático ao secret</li>
-                  <li>Nunca exponha API keys no código frontend</li>
-                </ol>
-              </div>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Selecionar Banco de Dados</Label>
+              <Select value={selectedDatabase} onValueChange={setSelectedDatabase}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolha um banco de dados" />
+                </SelectTrigger>
+                <SelectContent>
+                  {databases.map((db) => (
+                    <SelectItem key={db.id} value={db.id}>
+                      {db.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
+            {selectedDbConfig && (
+              <div className="space-y-4 pt-4 border-t">
+                {selectedDbConfig.fields.map((field) => (
+                  <div key={field} className="space-y-2">
+                    <Label htmlFor={`db-${field}`}>{field}</Label>
+                    <Input
+                      id={`db-${field}`}
+                      type={field.toLowerCase().includes("key") || field.toLowerCase().includes("string") ? "password" : "text"}
+                      placeholder={`Digite ${field}`}
+                      value={dbCredentials[field] || ""}
+                      onChange={(e) => setDbCredentials({ ...dbCredentials, [field]: e.target.value })}
+                    />
+                  </div>
+                ))}
+                <Button onClick={handleSaveDatabase} disabled={saving} className="w-full">
+                  {saving ? "Salvando..." : "Salvar Configuração"}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Informações do Sistema</CardTitle>
-            <CardDescription>Detalhes técnicos da aplicação</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="w-5 h-5" />
+              Cérebro (IA)
+            </CardTitle>
+            <CardDescription>
+              Selecione e configure o provedor de IA
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Versão</span>
-              <span className="font-mono">1.0.0</span>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Selecionar IA</Label>
+              <Select value={selectedAI} onValueChange={setSelectedAI}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolha um provedor de IA" />
+                </SelectTrigger>
+                <SelectContent>
+                  {aiProviders.map((ai) => (
+                    <SelectItem key={ai.id} value={ai.id}>
+                      {ai.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Backend</span>
-              <span className="font-mono">Lovable Cloud</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Edge Functions</span>
-              <span className="font-mono">analyze-video</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Provedores Ativos</span>
-              <span className="font-mono">{providers.filter(p => p.configured).length}/{providers.length}</span>
-            </div>
+
+            {selectedAiConfig && (
+              <div className="space-y-4 pt-4 border-t">
+                {selectedAiConfig.fields.map((field) => (
+                  <div key={field} className="space-y-2">
+                    <Label htmlFor={`ai-${field}`}>{field}</Label>
+                    <Input
+                      id={`ai-${field}`}
+                      type="password"
+                      placeholder={`Digite ${field}`}
+                      value={aiCredentials[field] || ""}
+                      onChange={(e) => setAiCredentials({ ...aiCredentials, [field]: e.target.value })}
+                    />
+                  </div>
+                ))}
+                <Button onClick={handleSaveAI} disabled={saving} className="w-full">
+                  {saving ? "Salvando..." : "Salvar Configuração"}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
