@@ -5,14 +5,27 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageSquare, Lightbulb, AlertTriangle, List } from "lucide-react";
 import type { VideoAnalysis } from "@/pages/Index";
 import { AnalysisBadge } from "@/components/AnalysisBadge";
+import { SimilarCasesSuggestions } from "@/components/SimilarCasesSuggestions";
+import { ResolutionForm } from "@/components/ResolutionForm";
 
 interface VideoAnalysisResultsProps {
   analysis: VideoAnalysis;
+  analysisId?: string;
+  conversationId?: string;
+  onResolutionSaved?: () => void;
 }
 
-const VideoAnalysisResults = ({ analysis }: VideoAnalysisResultsProps) => {
+const VideoAnalysisResults = ({ analysis, analysisId, conversationId, onResolutionSaved }: VideoAnalysisResultsProps) => {
+  const categoria = (analysis.analise as any).categoria || "";
+  const problemas = analysis.analise.problemas || [];
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Similar Cases Suggestions */}
+      {categoria && problemas.length > 0 && (
+        <SimilarCasesSuggestions categoria={categoria} problemas={problemas} />
+      )}
+
       {/* Analysis Badges */}
       {(analysis.analise as any).urgencia && (
         <Card className="p-4">
@@ -147,6 +160,15 @@ const VideoAnalysisResults = ({ analysis }: VideoAnalysisResultsProps) => {
             </div>
           </ScrollArea>
         </Card>
+      )}
+
+      {/* Resolution Form */}
+      {analysisId && conversationId && (
+        <ResolutionForm
+          analysisId={analysisId}
+          conversationId={conversationId}
+          onSave={onResolutionSaved || (() => {})}
+        />
       )}
     </div>
   );

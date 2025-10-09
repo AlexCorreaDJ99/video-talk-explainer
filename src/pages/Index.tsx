@@ -7,8 +7,6 @@ import VideoAnalysisResults from "@/components/VideoAnalysisResults";
 import { ITReportForm } from "@/components/ITReportForm";
 import { ConversationsList } from "@/components/ConversationsList";
 import { NewConversationDialog } from "@/components/NewConversationDialog";
-import { ResolutionForm } from "@/components/ResolutionForm";
-import { SimilarCasesPanel } from "@/components/SimilarCasesPanel";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -346,31 +344,17 @@ const Index = () => {
                   </div>
                 </div>
 
-                <VideoAnalysisResults analysis={analysis} />
-
-                {/* Grid com Casos Similares e Formulário de Resolução */}
-                <div className="grid lg:grid-cols-2 gap-6">
-                  {analysis.analise?.categoria && (
-                    <SimilarCasesPanel
-                      categoria={analysis.analise.categoria}
-                      problemas={analysis.analise.problemas || []}
-                    />
-                  )}
-                  
-                  {currentAnalysisId && selectedConversationId && analysis.analise?.categoria && (
-                    <ResolutionForm
-                      analysisId={currentAnalysisId}
-                      conversationId={selectedConversationId}
-                      categoria={analysis.analise.categoria}
-                      onResolutionSaved={() => {
-                        toast({
-                          title: "Sucesso!",
-                          description: "Resolução salva. Este caso agora pode ajudar em futuros atendimentos similares.",
-                        });
-                      }}
-                    />
-                  )}
-                </div>
+                <VideoAnalysisResults 
+                  analysis={analysis}
+                  analysisId={currentAnalysisId || undefined}
+                  conversationId={selectedConversationId || undefined}
+                  onResolutionSaved={() => {
+                    toast({
+                      title: "Sucesso!",
+                      description: "Resolução salva. Este caso agora pode ajudar em futuros atendimentos similares.",
+                    });
+                  }}
+                />
               </div>
             )}
 

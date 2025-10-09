@@ -1,43 +1,40 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, Loader2, Plus, Trash2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { CheckCircle2 } from "lucide-react";
 
 interface ResolutionFormProps {
   analysisId: string;
   conversationId: string;
-  categoria: string;
-  onResolutionSaved: () => void;
+  onSave: () => void;
 }
 
-export const ResolutionForm = ({ analysisId, conversationId, categoria, onResolutionSaved }: ResolutionFormProps) => {
+export const ResolutionForm = ({ analysisId, conversationId, onSave }: ResolutionFormProps) => {
   const { toast } = useToast();
   const [status, setStatus] = useState<string>("pendente");
   const [solucao, setSolucao] = useState("");
-  const [respostas, setRespostas] = useState<string[]>([""]);
+  const [resposta, setResposta] = useState("");
+  const [respostasEnviadas, setRespostasEnviadas] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const addResposta = () => {
-    setRespostas([...respostas, ""]);
+  const handleAddResposta = () => {
+    if (resposta.trim()) {
+      setRespostasEnviadas([...respostasEnviadas, resposta.trim()]);
+      setResposta("");
+    }
   };
 
-  const removeResposta = (index: number) => {
-    setRespostas(respostas.filter((_, i) => i !== index));
-  };
-
-  const updateResposta = (index: number, value: string) => {
-    const newRespostas = [...respostas];
-    newRespostas[index] = value;
-    setRespostas(newRespostas);
+  const handleRemoveResposta = (index: number) => {
+    setRespostasEnviadas(respostasEnviadas.filter((_, i) => i !== index));
   };
 
   const handleSave = async () => {
-    if (!solucao.trim()) {
+    if (!solucao.trim() && status !== "pendente") {
       toast({
         variant: "destructive",
         title: "Erro",
@@ -48,12 +45,10 @@ export const ResolutionForm = ({ analysisId, conversationId, categoria, onResolu
 
     setSaving(true);
     try {
-      const respostasValidas = respostas.filter(r => r.trim());
-      
       const updateData: any = {
         resolucao_status: status,
-        solucao_aplicada: solucao,
-        respostas_enviadas: respostasValidas,
+        solucao_aplicada: solucao.trim() || null,
+        respostas_enviadas: respostasEnviadas,
       };
 
       if (status === "resolvido") {
@@ -72,13 +67,13 @@ export const ResolutionForm = ({ analysisId, conversationId, categoria, onResolu
         description: "As informações foram salvas com sucesso.",
       });
 
-      onResolutionSaved();
+      onSave();
     } catch (error) {
       console.error("Erro ao salvar resolução:", error);
       toast({
         variant: "destructive",
         title: "Erro ao salvar",
-        description: "Não foi possível salvar as informações de resolução.",
+        description: "Não foi possível salvar a resolução.",
       });
     } finally {
       setSaving(false);
@@ -89,7 +84,7 @@ export const ResolutionForm = ({ analysisId, conversationId, categoria, onResolu
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <CheckCircle2 className="w-5 h-5 text-primary" />
+          <CheckCircle2 className="w-5 h-5" />
           Registrar Resolução
         </CardTitle>
       </CardHeader>
@@ -98,7 +93,7 @@ export const ResolutionForm = ({ analysisId, conversationId, categoria, onResolu
           <Label htmlFor="status">Status da Resolução</Label>
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger id="status">
-              <SelectValue placeholder="Selecione o status" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="pendente">Pendente</SelectItem>
@@ -110,64 +105,63 @@ export const ResolutionForm = ({ analysisId, conversationId, categoria, onResolu
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="solucao">Solução Aplicada</Label>
+          <Label htmlFor="solucao">Como foi resolvido?</Label>
           <Textarea
             id="solucao"
-            placeholder="Descreva como o problema foi resolvido..."
+            placeholder="Descreva detalhadamente a solução aplicada para este problema..."
             value={solucao}
             onChange={(e) => setSolucao(e.target.value)}
             rows={4}
+            className="resize-none"
           />
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label>Respostas Enviadas ao Cliente</Label>
+          <Label htmlFor="resposta">Respostas enviadas ao cliente</Label>
+          <div className="flex gap-2">
+            <Textarea
+              id="resposta"
+              placeholder="Digite a resposta que você enviou ao cliente..."
+              value={resposta}
+              onChange={(e) => setResposta(e.target.value)}
+              rows={3}
+              className="resize-none"
+            />
             <Button
               type="button"
-              variant="outline"
-              size="sm"
-              onClick={addResposta}
+              variant="secondary"
+              onClick={handleAddResposta}
+              disabled={!resposta.trim()}
             >
-              <Plus className="w-4 h-4 mr-1" />
-              Adicionar Resposta
+              Adicionar
             </Button>
           </div>
-          {respostas.map((resposta, index) => (
-            <div key={index} className="flex gap-2">
-              <Textarea
-                placeholder={`Resposta ${index + 1}...`}
-                value={resposta}
-                onChange={(e) => updateResposta(index, e.target.value)}
-                rows={2}
-              />
-              {respostas.length > 1 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => removeResposta(index)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
-          ))}
         </div>
 
-        <Button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full"
-        >
-          {saving ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Salvando...
-            </>
-          ) : (
-            "Salvar Resolução"
-          )}
+        {respostasEnviadas.length > 0 && (
+          <div className="space-y-2">
+            <Label>Respostas registradas:</Label>
+            <div className="space-y-2">
+              {respostasEnviadas.map((resp, index) => (
+                <Card key={index} className="p-3 bg-accent/5">
+                  <div className="flex justify-between items-start gap-2">
+                    <p className="text-sm flex-1">{resp}</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveResposta(index)}
+                    >
+                      Remover
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <Button onClick={handleSave} disabled={saving} className="w-full">
+          {saving ? "Salvando..." : "Salvar Resolução"}
         </Button>
       </CardContent>
     </Card>
