@@ -166,6 +166,36 @@ export function ConversationsList({
     setEditDialogOpen(true);
   };
 
+  const handleStatusChange = async (analysisId: string, newStatus: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      const { error } = await supabase
+        .from("analyses")
+        .update({ 
+          resolucao_status: newStatus,
+          resolvido_em: newStatus === "resolvido" ? new Date().toISOString() : null
+        })
+        .eq("id", analysisId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Status atualizado!",
+        description: "O status da análise foi alterado com sucesso.",
+      });
+
+      loadConversations();
+    } catch (error) {
+      console.error("Erro ao atualizar status:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar status",
+        description: "Não foi possível alterar o status.",
+      });
+    }
+  };
+
   const filteredConversations = conversations.filter((conv) => {
     const lastAnalysis = conv.analyses?.[0];
     const matchesSearch =
@@ -323,15 +353,33 @@ export function ConversationsList({
                   }`}
                 >
                   <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-2">
+                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="font-medium text-sm truncate">{conv.cliente}</div>
                         <div className="text-xs text-muted-foreground truncate">
                           Atendente: {conv.atendente}
                         </div>
-                        <Badge variant={statusBadge.variant} className="text-xs">
-                          {statusBadge.label}
-                        </Badge>
+                        {lastAnalysis ? (
+                          <Select
+                            value={lastAnalysis.resolucao_status || "pendente"}
+                            onValueChange={(value) => handleStatusChange(lastAnalysis.id, value, {} as React.MouseEvent)}
+                          >
+                            <SelectTrigger 
+                              className="w-[140px] h-7 text-xs"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pendente">Pendente</SelectItem>
+                              <SelectItem value="em_progresso">Em Progresso</SelectItem>
+                              <SelectItem value="resolvido">Resolvido</SelectItem>
+                              <SelectItem value="nao_resolvido">Não Resolvido</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Badge variant="outline" className="text-xs">Sem Análise</Badge>
+                        )}
                       </div>
                       <div className="flex gap-1 shrink-0">
                         {lastAnalysis && (
