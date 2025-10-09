@@ -214,72 +214,77 @@ export function ConversationsList({
                 <div
                   key={conv.id}
                   onClick={() => onSelectConversation(conv.id)}
-                  className={`w-full text-left p-3 rounded-lg transition-colors hover:bg-accent cursor-pointer ${
+                  className={`w-full text-left p-4 rounded-lg transition-colors hover:bg-accent cursor-pointer ${
                     selectedConversationId === conv.id
                       ? "bg-accent border-2 border-primary"
                       : "border border-transparent"
                   }`}
                 >
-                  <div className="space-y-2">
-                    <div className="font-medium text-sm truncate">{conv.cliente}</div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      Atendente: {conv.atendente}
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{conv.cliente}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          Atendente: {conv.atendente}
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        {lastAnalysis && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) =>
+                              handleEdit(
+                                conv.id,
+                                {
+                                  urgencia: lastAnalysis.urgencia,
+                                  sentimento: lastAnalysis.sentimento,
+                                  categoria: lastAnalysis.categoria,
+                                },
+                                e
+                              )
+                            }
+                            className="h-7 w-7 hover:bg-accent"
+                            title="Editar classificação"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => handleDelete(conv.id, e)}
+                          className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          title="Apagar conversa"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
+                    
                     {lastAnalysis?.resumo_curto && (
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-xs text-muted-foreground line-clamp-2">
                         {lastAnalysis.resumo_curto}
                       </p>
                     )}
-                     <div className="flex items-center justify-between gap-2">
-                       <div className="flex flex-wrap gap-1 flex-1">
-                         {lastAnalysis?.urgencia && (
-                           <AnalysisBadge type="urgencia" value={lastAnalysis.urgencia} size="sm" />
-                         )}
-                         {lastAnalysis?.sentimento && (
-                           <AnalysisBadge type="sentimento" value={lastAnalysis.sentimento} size="sm" />
-                         )}
-                       </div>
-                       <div className="flex gap-1 shrink-0">
-                         {lastAnalysis && (
-                           <Button
-                             variant="ghost"
-                             size="icon"
-                             onClick={(e) =>
-                               handleEdit(
-                                 conv.id,
-                                 {
-                                   urgencia: lastAnalysis.urgencia,
-                                   sentimento: lastAnalysis.sentimento,
-                                   categoria: lastAnalysis.categoria,
-                                 },
-                                 e
-                               )
-                             }
-                             className="h-7 w-7 hover:bg-accent"
-                             title="Editar classificação"
-                           >
-                             <Edit className="w-3.5 h-3.5" />
-                           </Button>
-                         )}
-                         <Button
-                           variant="ghost"
-                           size="icon"
-                           onClick={(e) => handleDelete(conv.id, e)}
-                           className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                           title="Apagar conversa"
-                         >
-                           <Trash2 className="w-3.5 h-3.5" />
-                         </Button>
-                       </div>
-                     </div>
-                     <div className="text-xs text-muted-foreground mt-1">
-                       {formatDistanceToNow(new Date(conv.updated_at), {
-                         addSuffix: true,
-                         locale: ptBR,
-                       })}
-                     </div>
-                   </div>
-                 </div>
+                    
+                    <div className="flex flex-wrap gap-1.5">
+                      {lastAnalysis?.urgencia && (
+                        <AnalysisBadge type="urgencia" value={lastAnalysis.urgencia} size="sm" />
+                      )}
+                      {lastAnalysis?.sentimento && (
+                        <AnalysisBadge type="sentimento" value={lastAnalysis.sentimento} size="sm" />
+                      )}
+                    </div>
+                    
+                    <div className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(conv.updated_at), {
+                        addSuffix: true,
+                        locale: ptBR,
+                      })}
+                    </div>
+                  </div>
+                </div>
               );
             })
           )}
