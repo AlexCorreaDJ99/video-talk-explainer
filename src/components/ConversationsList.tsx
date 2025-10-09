@@ -361,33 +361,12 @@ export function ConversationsList({
                   }`}
                 >
                   <div className="space-y-3">
-                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="font-medium text-sm truncate">{conv.cliente}</div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate mb-1">{conv.cliente}</div>
                         <div className="text-xs text-muted-foreground truncate">
                           Atendente: {conv.atendente}
                         </div>
-                        {lastAnalysis ? (
-                          <Select
-                            value={lastAnalysis.resolucao_status || "pendente"}
-                            onValueChange={(value) => handleStatusChange(lastAnalysis.id, value, {} as React.MouseEvent)}
-                          >
-                            <SelectTrigger 
-                              className="w-[140px] h-7 text-xs"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pendente">Pendente</SelectItem>
-                              <SelectItem value="em_progresso">Em Progresso</SelectItem>
-                              <SelectItem value="resolvido">Resolvido</SelectItem>
-                              <SelectItem value="nao_resolvido">Não Resolvido</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <Badge variant="outline" className="text-xs">Sem Análise</Badge>
-                        )}
                       </div>
                       <div className="flex gap-1 shrink-0">
                         {lastAnalysis && (
@@ -421,6 +400,31 @@ export function ConversationsList({
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
+                    </div>
+
+                    {/* Status Select ou Badge */}
+                    <div>
+                      {lastAnalysis ? (
+                        <Select
+                          value={lastAnalysis.resolucao_status || "pendente"}
+                          onValueChange={(value) => handleStatusChange(lastAnalysis.id, value, {} as React.MouseEvent)}
+                        >
+                          <SelectTrigger 
+                            className="w-[140px] h-7 text-xs"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pendente">Pendente</SelectItem>
+                            <SelectItem value="em_progresso">Em Progresso</SelectItem>
+                            <SelectItem value="resolvido">Resolvido</SelectItem>
+                            <SelectItem value="nao_resolvido">Não Resolvido</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge variant="outline" className="text-xs">Sem Análise</Badge>
+                      )}
                     </div>
                     
                     {lastAnalysis?.analise_data?.resumo_curto && (
