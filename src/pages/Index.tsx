@@ -243,13 +243,12 @@ const Index = () => {
             
             let fileToSend = mediaFile;
             const ext = mediaFile.name.split('.')?.pop()?.toLowerCase();
-            const isVideo = mediaFile.type.startsWith('video/');
             const supportedExt = ['mp3','mp4','mpeg','mpga','m4a','wav','webm'];
             const isOgg = mediaFile.type === 'audio/ogg' || mediaFile.type === 'application/ogg' || ext === 'ogg';
 
-            // Converta SEMPRE vídeos e OGG para WAV antes de enviar ao Whisper
-            if (isVideo || isOgg || !supportedExt.includes(ext || '')) {
-              console.log("[Modo Local] Convertendo arquivo para WAV para compatibilidade com Whisper...");
+            // Whisper suporta MP4 diretamente! Só converter formatos não suportados (OGG)
+            if (isOgg && !supportedExt.includes(ext || '')) {
+              console.log("[Modo Local] Convertendo arquivo OGG para WAV...");
               try {
                 fileToSend = await convertToWavIfNeeded(mediaFile);
               } catch (e) {
