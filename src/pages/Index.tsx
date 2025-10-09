@@ -171,7 +171,18 @@ const Index = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao processar arquivos');
+        const errorMessage = errorData.error || 'Erro ao processar arquivos';
+        
+        // Mensagens mais específicas baseadas no erro
+        if (errorMessage.includes('LOVABLE_API_KEY')) {
+          throw new Error('❌ API Key não configurada. Entre em contato com o administrador.');
+        } else if (errorMessage.includes('Limite de requisições')) {
+          throw new Error('⚠️ Limite de requisições excedido. Por favor, aguarde alguns minutos e tente novamente.');
+        } else if (errorMessage.includes('Créditos insuficientes')) {
+          throw new Error('💳 Créditos insuficientes. Por favor, adicione créditos ao workspace.');
+        } else {
+          throw new Error(errorMessage);
+        }
       }
 
       const newData = await response.json();

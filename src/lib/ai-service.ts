@@ -121,10 +121,12 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
   const { prompt, config } = params;
 
   if (!config.apiKey && config.provider !== "lovable") {
-    return {
-      data: null,
-      error: { message: "API Key não configurada. Configure em Configurações." },
-    };
+    throw new Error(`API Key não configurada para ${config.provider}. Configure em Configurações.`);
+  }
+
+  // Validar formato básico da API Key
+  if (config.apiKey && config.apiKey.trim().length < 10) {
+    throw new Error(`API Key inválida para ${config.provider}. Verifique a chave em Configurações.`);
   }
 
   try {
@@ -188,9 +190,24 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
 
     if (!response.ok) {
       const errorText = await response.text();
+      
+      let errorMessage = `Erro na API (${response.status})`;
+      
+      if (response.status === 401 || response.status === 403) {
+        errorMessage = `❌ API Key inválida para ${config.provider}. Verifique sua chave em Configurações.`;
+      } else if (response.status === 429) {
+        errorMessage = `⚠️ Limite de requisições excedido para ${config.provider}. Tente novamente mais tarde.`;
+      } else if (response.status === 402) {
+        errorMessage = `💳 Créditos insuficientes para ${config.provider}. Adicione créditos à sua conta.`;
+      } else if (response.status === 404) {
+        errorMessage = `❌ Endpoint não encontrado para ${config.provider}. Verifique a configuração.`;
+      } else {
+        errorMessage = `Erro na API ${config.provider}: ${errorText}`;
+      }
+      
       return {
         data: null,
-        error: { message: `Erro na API: ${response.status} - ${errorText}` },
+        error: { message: errorMessage },
       };
     }
 

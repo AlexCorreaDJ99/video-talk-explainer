@@ -11,6 +11,10 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Validar API Key
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY não configurada. Configure nas secrets do projeto.');
+    }
     const formData = await req.formData();
     const files: File[] = [];
     
@@ -64,8 +68,20 @@ Deno.serve(async (req) => {
           });
 
           if (!response.ok) {
-            console.error('Erro na análise da imagem:', await response.text());
-            return `${file.name}: Erro ao analisar`;
+            const errorText = await response.text();
+            console.error('Erro na análise da imagem:', errorText);
+            
+            if (response.status === 429) {
+              return `${file.name}: ⚠️ Limite de requisições excedido`;
+            }
+            if (response.status === 402) {
+              return `${file.name}: ⚠️ Créditos insuficientes`;
+            }
+            if (response.status === 401) {
+              return `${file.name}: ⚠️ API Key inválida`;
+            }
+            
+            return `${file.name}: Erro ao analisar - ${errorText}`;
           }
 
           const data = await response.json();
