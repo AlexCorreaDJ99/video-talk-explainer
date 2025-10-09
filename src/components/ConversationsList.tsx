@@ -4,13 +4,16 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageSquare, Search, Plus, BarChart3, Trash2, Edit, Settings } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MessageSquare, Search, Plus, BarChart3, Trash2, Edit, Settings, Filter } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AnalysisBadge } from "@/components/AnalysisBadge";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { EditClassificationDialog } from "./EditClassificationDialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface Conversation {
   id: string;
@@ -19,6 +22,8 @@ interface Conversation {
   created_at: string;
   updated_at: string;
   analyses?: Array<{
+    id: string;
+    resolucao_status?: string;
     analise_data: {
       urgencia?: string;
       sentimento?: string;
@@ -45,12 +50,27 @@ export function ConversationsList({
   const { toast } = useToast();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterUrgencia, setFilterUrgencia] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterCategoria, setFilterCategoria] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingConversation, setEditingConversation] = useState<{
     id: string;
     data: { urgencia?: string; sentimento?: string; categoria?: string };
   } | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+
+  const getStatusBadge = (status?: string) => {
+    const st = status || "pendente";
+    const variants: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+      pendente: { label: "Pendente", variant: "outline" },
+      em_progresso: { label: "Em Progresso", variant: "secondary" },
+      resolvido: { label: "Resolvido", variant: "default" },
+      nao_resolvido: { label: "Não Resolvido", variant: "destructive" },
+    };
+    return variants[st] || variants.pendente;
+  };
 
   useEffect(() => {
     loadConversations();
@@ -63,6 +83,8 @@ export function ConversationsList({
         .select(`
           *,
           analyses (
+            id,
+            resolucao_status,
             analise_data
           )
         `)
@@ -144,11 +166,26 @@ export function ConversationsList({
     setEditDialogOpen(true);
   };
 
-  const filteredConversations = conversations.filter(
-    (conv) =>
+  const filteredConversations = conversations.filter((conv) => {
+    const lastAnalysis = conv.analyses?.[0];
+    const matchesSearch =
       conv.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      conv.atendente.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      conv.atendente.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesUrgencia = 
+      filterUrgencia === "all" || 
+      lastAnalysis?.analise_data?.urgencia === filterUrgencia;
+    
+    const matchesStatus = 
+      filterStatus === "all" || 
+      (lastAnalysis?.resolucao_status || "pendente") === filterStatus;
+    
+    const matchesCategoria = 
+      filterCategoria === "all" || 
+      lastAnalysis?.analise_data?.categoria === filterCategoria;
+
+    return matchesSearch && matchesUrgencia && matchesStatus && matchesCategoria;
+  });
 
   return (
     <Card className="h-full flex flex-col">
@@ -195,6 +232,70 @@ export function ConversationsList({
             className="pl-8"
           />
         </div>
+
+        <Collapsible open={showFilters} onOpenChange={setShowFilters}>
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" size="sm" className="w-full gap-2">
+              <Filter className="w-4 h-4" />
+              {showFilters ? "Ocultar Filtros" : "Mostrar Filtros"}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-2 mt-2">
+            <Select value={filterUrgencia} onValueChange={setFilterUrgencia}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Urgência" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas Urgências</SelectItem>
+                <SelectItem value="critica">Crítica</SelectItem>
+                <SelectItem value="alta">Alta</SelectItem>
+                <SelectItem value="media">Média</SelectItem>
+                <SelectItem value="baixa">Baixa</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos Status</SelectItem>
+                <SelectItem value="pendente">Pendente</SelectItem>
+                <SelectItem value="em_progresso">Em Progresso</SelectItem>
+                <SelectItem value="resolvido">Resolvido</SelectItem>
+                <SelectItem value="nao_resolvido">Não Resolvido</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filterCategoria} onValueChange={setFilterCategoria}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas Categorias</SelectItem>
+                <SelectItem value="tecnico">Técnico</SelectItem>
+                <SelectItem value="financeiro">Financeiro</SelectItem>
+                <SelectItem value="atendimento">Atendimento</SelectItem>
+                <SelectItem value="operacional">Operacional</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {(filterUrgencia !== "all" || filterStatus !== "all" || filterCategoria !== "all") && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full"
+                onClick={() => {
+                  setFilterUrgencia("all");
+                  setFilterStatus("all");
+                  setFilterCategoria("all");
+                }}
+              >
+                Limpar Filtros
+              </Button>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
       </div>
 
       <ScrollArea className="flex-1">
@@ -209,7 +310,8 @@ export function ConversationsList({
             </div>
           ) : (
             filteredConversations.map((conv) => {
-              const lastAnalysis = conv.analyses?.[0]?.analise_data;
+              const lastAnalysis = conv.analyses?.[0];
+              const statusBadge = getStatusBadge(lastAnalysis?.resolucao_status);
               return (
                 <div
                   key={conv.id}
@@ -222,11 +324,14 @@ export function ConversationsList({
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 space-y-1">
                         <div className="font-medium text-sm truncate">{conv.cliente}</div>
                         <div className="text-xs text-muted-foreground truncate">
                           Atendente: {conv.atendente}
                         </div>
+                        <Badge variant={statusBadge.variant} className="text-xs">
+                          {statusBadge.label}
+                        </Badge>
                       </div>
                       <div className="flex gap-1 shrink-0">
                         {lastAnalysis && (
@@ -237,9 +342,9 @@ export function ConversationsList({
                               handleEdit(
                                 conv.id,
                                 {
-                                  urgencia: lastAnalysis.urgencia,
-                                  sentimento: lastAnalysis.sentimento,
-                                  categoria: lastAnalysis.categoria,
+                                  urgencia: lastAnalysis.analise_data?.urgencia,
+                                  sentimento: lastAnalysis.analise_data?.sentimento,
+                                  categoria: lastAnalysis.analise_data?.categoria,
                                 },
                                 e
                               )
@@ -262,18 +367,18 @@ export function ConversationsList({
                       </div>
                     </div>
                     
-                    {lastAnalysis?.resumo_curto && (
+                    {lastAnalysis?.analise_data?.resumo_curto && (
                       <p className="text-xs text-muted-foreground line-clamp-2">
-                        {lastAnalysis.resumo_curto}
+                        {lastAnalysis.analise_data.resumo_curto}
                       </p>
                     )}
                     
                     <div className="flex flex-wrap gap-1.5">
-                      {lastAnalysis?.urgencia && (
-                        <AnalysisBadge type="urgencia" value={lastAnalysis.urgencia} size="sm" />
+                      {lastAnalysis?.analise_data?.urgencia && (
+                        <AnalysisBadge type="urgencia" value={lastAnalysis.analise_data.urgencia} size="sm" />
                       )}
-                      {lastAnalysis?.sentimento && (
-                        <AnalysisBadge type="sentimento" value={lastAnalysis.sentimento} size="sm" />
+                      {lastAnalysis?.analise_data?.sentimento && (
+                        <AnalysisBadge type="sentimento" value={lastAnalysis.analise_data.sentimento} size="sm" />
                       )}
                     </div>
                     

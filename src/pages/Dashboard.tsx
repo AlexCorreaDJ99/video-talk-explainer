@@ -9,12 +9,17 @@ import { AnalysisBadge } from "@/components/AnalysisBadge";
 import { EditClassificationDialog } from "@/components/EditClassificationDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { DashboardFilters } from "@/components/DashboardFilters";
+import { PerformanceMetrics } from "@/components/PerformanceMetrics";
+import { subDays, startOfDay, endOfDay, differenceInHours } from "date-fns";
 
 interface AnalysisStats {
   totalAnalises: number;
   porCategoria: Record<string, number>;
   porUrgencia: Record<string, number>;
   porSentimento: Record<string, number>;
+  porStatus: Record<string, number>;
+  tempoMedioResolucao: number;
   recentes: Array<{
     id: string;
     created_at: string;
@@ -35,27 +40,49 @@ export default function Dashboard() {
     porCategoria: {},
     porUrgencia: {},
     porSentimento: {},
+    porStatus: {},
+    tempoMedioResolucao: 0,
     recentes: [],
   });
   const [loading, setLoading] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedAnalysis, setSelectedAnalysis] = useState<any>(null);
+  const [filterUrgencia, setFilterUrgencia] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterCategoria, setFilterCategoria] = useState("all");
+  const [filterPeriodo, setFilterPeriodo] = useState("all");
 
   useEffect(() => {
     loadStats();
-  }, []);
+  }, [filterUrgencia, filterStatus, filterCategoria, filterPeriodo]);
+
+  const getDateRange = () => {
+    const now = new Date();
+    switch (filterPeriodo) {
+      case "hoje":
+        return { start: startOfDay(now), end: endOfDay(now) };
+      case "semana":
+        return { start: startOfDay(subDays(now, 7)), end: endOfDay(now) };
+      case "mes":
+        return { start: startOfDay(subDays(now, 30)), end: endOfDay(now) };
+      case "trimestre":
+        return { start: startOfDay(subDays(now, 90)), end: endOfDay(now) };
+      default:
+        return null;
+    }
+  };
 
   const loadStats = async () => {
     try {
-      // Carregar análises com informações da conversa
-      const { data: analyses, error } = await supabase
+      let query = supabase
         .from("analyses")
         .select(`
           id,
           created_at,
           analise_data,
           conversation_id,
+          resolucao_status,
           conversations (
             cliente,
             atendente
@@ -63,15 +90,41 @@ export default function Dashboard() {
         `)
         .order("created_at", { ascending: false });
 
+      // Aplicar filtro de período
+      const dateRange = getDateRange();
+      if (dateRange) {
+        query = query
+          .gte("created_at", dateRange.start.toISOString())
+          .lte("created_at", dateRange.end.toISOString());
+      }
+
+      const { data: analyses, error } = await query;
+
       if (error) throw error;
+
+      // Filtrar por outros critérios
+      const filteredAnalyses = (analyses || []).filter((analysis: any) => {
+        const data = analysis.analise_data;
+        const status = analysis.resolucao_status || "pendente";
+
+        const matchesUrgencia = filterUrgencia === "all" || data.urgencia === filterUrgencia;
+        const matchesStatus = filterStatus === "all" || status === filterStatus;
+        const matchesCategoria = filterCategoria === "all" || data.categoria === filterCategoria;
+
+        return matchesUrgencia && matchesStatus && matchesCategoria;
+      });
 
       const porCategoria: Record<string, number> = {};
       const porUrgencia: Record<string, number> = {};
       const porSentimento: Record<string, number> = {};
+      const porStatus: Record<string, number> = {};
       const recentes: any[] = [];
+      let totalHorasResolucao = 0;
+      let contadorResolvidos = 0;
 
-      analyses?.forEach((analysis: any) => {
+      filteredAnalyses?.forEach((analysis: any) => {
         const data = analysis.analise_data;
+        const status = analysis.resolucao_status || "pendente";
         
         if (data.categoria) {
           porCategoria[data.categoria] = (porCategoria[data.categoria] || 0) + 1;
@@ -81,6 +134,18 @@ export default function Dashboard() {
         }
         if (data.sentimento) {
           porSentimento[data.sentimento] = (porSentimento[data.sentimento] || 0) + 1;
+        }
+        
+        porStatus[status] = (porStatus[status] || 0) + 1;
+
+        // Calcular tempo de resolução
+        if (status === "resolvido" && analysis.resolvido_em) {
+          const horasResolucao = differenceInHours(
+            new Date(analysis.resolvido_em),
+            new Date(analysis.created_at)
+          );
+          totalHorasResolucao += horasResolucao;
+          contadorResolvidos++;
         }
 
         if (recentes.length < 10) {
@@ -97,11 +162,17 @@ export default function Dashboard() {
         }
       });
 
+      const tempoMedioResolucao = contadorResolvidos > 0 
+        ? totalHorasResolucao / contadorResolvidos 
+        : 0;
+
       setStats({
-        totalAnalises: analyses?.length || 0,
+        totalAnalises: filteredAnalyses?.length || 0,
         porCategoria,
         porUrgencia,
         porSentimento,
+        porStatus,
+        tempoMedioResolucao,
         recentes,
       });
     } catch (error) {
@@ -193,6 +264,32 @@ export default function Dashboard() {
             <p className="text-muted-foreground">Análise e estatísticas dos atendimentos</p>
           </div>
         </div>
+
+        {/* Filtros */}
+        <DashboardFilters
+          filterUrgencia={filterUrgencia}
+          filterStatus={filterStatus}
+          filterCategoria={filterCategoria}
+          filterPeriodo={filterPeriodo}
+          onFilterUrgencia={setFilterUrgencia}
+          onFilterStatus={setFilterStatus}
+          onFilterCategoria={setFilterCategoria}
+          onFilterPeriodo={setFilterPeriodo}
+          onClearFilters={() => {
+            setFilterUrgencia("all");
+            setFilterStatus("all");
+            setFilterCategoria("all");
+            setFilterPeriodo("all");
+          }}
+        />
+
+        {/* Métricas de Performance */}
+        <PerformanceMetrics
+          totalAnalises={stats.totalAnalises}
+          resolvidos={stats.porStatus.resolvido || 0}
+          naoResolvidos={stats.porStatus.nao_resolvido || 0}
+          tempoMedioResolucao={stats.tempoMedioResolucao}
+        />
 
         {/* Cards de Resumo */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
