@@ -10,6 +10,8 @@ import { NewConversationDialog } from "@/components/NewConversationDialog";
 import { BugInvestigationForm } from "@/components/BugInvestigationForm";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { getProviderForContent } from "@/lib/ai-config";
+import { convertToWavIfNeeded } from "@/lib/audio";
 
 export interface VideoAnalysis {
   transcricao: string;
@@ -149,10 +151,8 @@ const Index = () => {
     try {
       // Importar serviços dinamicamente
       const { getStorageMode } = await import("@/lib/storage");
-      const { getAIConfig } = await import("@/lib/ai-service");
       
       const storageMode = getStorageMode();
-      const aiConfig = getAIConfig();
 
       // Construir dados para análise
       let transcricao = pastedText || '';
@@ -161,8 +161,12 @@ const Index = () => {
 
       let newData;
 
-      // Se estiver em modo remote e usando Lovable AI, usar edge function
-      if (storageMode === "remote" && aiConfig.provider === "lovable") {
+      // Selecionar provedor baseado no tipo de conteúdo (roteamento Multi-AI)
+      const contentType = tipo === 'áudio' ? 'audio' : tipo === 'vídeo' ? 'video' : tipo === 'imagem' ? 'imagem' : 'texto';
+      const providerForType = getProviderForContent(contentType as any);
+
+      // Se estiver em modo remoto e o provedor for Lovable AI, usar edge function
+      if (storageMode === "remote" && (providerForType?.provider ?? "lovable") === "lovable") {
         const formData = new FormData();
         
         files.forEach((file, index) => {
@@ -203,11 +207,11 @@ const Index = () => {
         newData = await response.json();
       } else {
         // Modo local ou API externa configurada
-        console.log("[Modo Local] Processando com API externa:", aiConfig.provider);
-        console.log("[Modo Local] Modelo:", aiConfig.model || "padrão");
+        console.log("[Modo Local] Processando com provedor:", providerForType?.provider);
+        console.log("[Modo Local] Modelo:", providerForType?.model || "padrão");
         
-        if (!aiConfig.apiKey && aiConfig.provider !== "lovable") {
-          throw new Error(`❌ Configure a API Key do ${aiConfig.provider} em Configurações antes de continuar.\n\nPasso a passo:\n1. Clique no botão "Configurações"\n2. Configure o provedor de IA desejado\n3. Insira sua API Key\n4. Selecione o modelo/versão\n5. Salve as configurações`);
+        if (!providerForType?.apiKey && providerForType?.provider !== "lovable") {
+          throw new Error(`❌ Configure a API Key do ${providerForType?.provider} em Configurações antes de continuar.\n\nPasso a passo:\n1. Clique no botão "Configurações"\n2. Configure o provedor de IA desejado\n3. Insira sua API Key\n4. Selecione o modelo/versão\n5. Salve as configurações`);
         }
 
         // Para modo local, processar com API externa
@@ -233,7 +237,21 @@ const Index = () => {
               description: `Processando ${mediaFile.name}`,
             });
             
-            const result = await transcribeAudio(mediaFile);
+            let fileToSend = mediaFile;
+            const ext = mediaFile.name.split('.').pop()?.toLowerCase();
+            const supportedExt = ['mp3','mp4','mpeg','mpga','m4a','wav','webm'];
+            const isOgg = mediaFile.type === 'audio/ogg' || mediaFile.type === 'application/ogg' || ext === 'ogg';
+
+            if (!supportedExt.includes(ext || '') || isOgg) {
+              console.log("[Modo Local] Convertendo arquivo para WAV para compatibilidade com Whisper...");
+              try {
+                fileToSend = await convertToWavIfNeeded(mediaFile);
+              } catch (e) {
+                throw new Error('Falha ao converter o áudio. Tente enviar em MP3 ou WAV.');
+              }
+            }
+            
+            const result = await transcribeAudio(fileToSend);
             
             if (result.error) {
               throw new Error(result.error.message);
