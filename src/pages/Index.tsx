@@ -7,6 +7,8 @@ import VideoAnalysisResults from "@/components/VideoAnalysisResults";
 import { ITReportForm } from "@/components/ITReportForm";
 import { ConversationsList } from "@/components/ConversationsList";
 import { NewConversationDialog } from "@/components/NewConversationDialog";
+import { ResolutionForm } from "@/components/ResolutionForm";
+import { SimilarCasesPanel } from "@/components/SimilarCasesPanel";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,6 +24,9 @@ export interface VideoAnalysis {
     topicos: string[];
     problemas: string[];
     insights: string[];
+    categoria?: string;
+    urgencia?: string;
+    sentimento?: string;
   };
 }
 
@@ -34,6 +39,7 @@ const Index = () => {
   const [currentConversation, setCurrentConversation] = useState<{ cliente: string; atendente: string } | null>(null);
   const [showNewConversationDialog, setShowNewConversationDialog] = useState(false);
   const [conversationsRefresh, setConversationsRefresh] = useState(0);
+  const [currentAnalysisId, setCurrentAnalysisId] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Carregar conversa selecionada
@@ -67,12 +73,14 @@ const Index = () => {
 
       if (analyses && analyses.length > 0) {
         const lastAnalysis = analyses[0];
+        setCurrentAnalysisId(lastAnalysis.id);
         setAnalysis({
           transcricao: lastAnalysis.transcricao || "",
           segmentos: [],
           analise: lastAnalysis.analise_data as any,
         });
       } else {
+        setCurrentAnalysisId(null);
         setAnalysis(null);
       }
 
@@ -170,6 +178,7 @@ const Index = () => {
       
       // Salvar análise no banco
       let savedAnalysis;
+      let savedAnalysisId;
       if (addingEvidence && analysis) {
         // Combinar com análise anterior
         const combinedAnalysis = {
@@ -183,30 +192,39 @@ const Index = () => {
           }
         };
         
-        const { error: saveError } = await supabase
+        const { data: savedData, error: saveError } = await supabase
           .from("analyses")
           .insert({
             conversation_id: selectedConversationId,
             transcricao: combinedAnalysis.transcricao,
             analise_data: combinedAnalysis.analise,
-          });
+            resolucao_status: 'pendente',
+          })
+          .select()
+          .single();
 
         if (saveError) throw saveError;
         savedAnalysis = combinedAnalysis;
+        savedAnalysisId = savedData.id;
       } else {
-        const { error: saveError } = await supabase
+        const { data: savedData, error: saveError } = await supabase
           .from("analyses")
           .insert({
             conversation_id: selectedConversationId,
             transcricao: newData.transcricao,
             analise_data: newData.analise,
-          });
+            resolucao_status: 'pendente',
+          })
+          .select()
+          .single();
 
         if (saveError) throw saveError;
         savedAnalysis = newData;
+        savedAnalysisId = savedData.id;
       }
 
       setAnalysis(savedAnalysis);
+      setCurrentAnalysisId(savedAnalysisId);
       setAddingEvidence(false);
 
       toast({
@@ -317,6 +335,7 @@ const Index = () => {
                       variant="outline"
                       onClick={() => {
                         setAnalysis(null);
+                        setCurrentAnalysisId(null);
                         setShowReport(false);
                         setAddingEvidence(false);
                       }}
@@ -328,6 +347,30 @@ const Index = () => {
                 </div>
 
                 <VideoAnalysisResults analysis={analysis} />
+
+                {/* Grid com Casos Similares e Formulário de Resolução */}
+                <div className="grid lg:grid-cols-2 gap-6">
+                  {analysis.analise?.categoria && (
+                    <SimilarCasesPanel
+                      categoria={analysis.analise.categoria}
+                      problemas={analysis.analise.problemas || []}
+                    />
+                  )}
+                  
+                  {currentAnalysisId && selectedConversationId && analysis.analise?.categoria && (
+                    <ResolutionForm
+                      analysisId={currentAnalysisId}
+                      conversationId={selectedConversationId}
+                      categoria={analysis.analise.categoria}
+                      onResolutionSaved={() => {
+                        toast({
+                          title: "Sucesso!",
+                          description: "Resolução salva. Este caso agora pode ajudar em futuros atendimentos similares.",
+                        });
+                      }}
+                    />
+                  )}
+                </div>
               </div>
             )}
 

@@ -20,6 +20,11 @@ export type Database = {
           conversation_id: string
           created_at: string | null
           id: string
+          resolucao_status: string | null
+          resolvido_em: string | null
+          respostas_enviadas: Json | null
+          solucao_aplicada: string | null
+          tempo_resolucao: unknown | null
           transcricao: string | null
         }
         Insert: {
@@ -27,6 +32,11 @@ export type Database = {
           conversation_id: string
           created_at?: string | null
           id?: string
+          resolucao_status?: string | null
+          resolvido_em?: string | null
+          respostas_enviadas?: Json | null
+          solucao_aplicada?: string | null
+          tempo_resolucao?: unknown | null
           transcricao?: string | null
         }
         Update: {
@@ -34,6 +44,11 @@ export type Database = {
           conversation_id?: string
           created_at?: string | null
           id?: string
+          resolucao_status?: string | null
+          resolvido_em?: string | null
+          respostas_enviadas?: Json | null
+          solucao_aplicada?: string | null
+          tempo_resolucao?: unknown | null
           transcricao?: string | null
         }
         Relationships: [
@@ -110,7 +125,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      buscar_casos_similares: {
+        Args: { p_categoria: string; p_problemas: string[] }
+        Returns: {
+          analise_data: Json
+          conversation_id: string
+          id: string
+          respostas_enviadas: Json
+          solucao_aplicada: string
+          tempo_resolucao: unknown
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
