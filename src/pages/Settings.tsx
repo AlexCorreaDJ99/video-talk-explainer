@@ -39,6 +39,26 @@ export default function Settings() {
 
   useEffect(() => {
     setStorageModeState(getStorageMode());
+    
+    // Carregar configuração de IA salva
+    const loadAIConfig = async () => {
+      try {
+        const { getAIConfig } = await import("@/lib/ai-service");
+        const config = getAIConfig();
+        
+        if (config.provider) {
+          setSelectedAI(config.provider);
+          if (config.apiKey) {
+            // Mostrar chave mascarada
+            setAiCredentials({ "API Key": "••••••••" + config.apiKey.slice(-4) });
+          }
+        }
+      } catch (e) {
+        console.error("Erro ao carregar config de IA:", e);
+      }
+    };
+    
+    loadAIConfig();
   }, []);
 
   const handleStorageModeChange = (mode: StorageMode) => {
@@ -177,16 +197,22 @@ export default function Settings() {
       // Importar dinamicamente para evitar erro se o módulo não existir
       const { setAIConfig } = await import("@/lib/ai-service");
       
+      const apiKey = aiCredentials["API Key"];
+      
       setAIConfig({
         provider: selectedAI as any,
-        apiKey: aiCredentials["API Key"],
+        apiKey: apiKey,
       });
 
       toast({
         title: "Configuração salva",
         description: `${ai.name} configurado com sucesso!`,
       });
-      setAiCredentials({});
+      
+      // Manter chave mascarada no campo após salvar
+      if (apiKey && !apiKey.startsWith("••••")) {
+        setAiCredentials({ "API Key": "••••••••" + apiKey.slice(-4) });
+      }
     } catch (error) {
       toast({
         title: "Erro",
@@ -559,13 +585,25 @@ export default function Settings() {
                     {selectedAiConfig.fields.map((field) => (
                       <div key={field} className="space-y-2">
                         <Label htmlFor={`ai-${field}`}>{field}</Label>
-                        <Input
-                          id={`ai-${field}`}
-                          type="password"
-                          placeholder={`Digite ${field}`}
-                          value={aiCredentials[field] || ""}
-                          onChange={(e) => setAiCredentials({ ...aiCredentials, [field]: e.target.value })}
-                        />
+                        <div className="flex gap-2">
+                          <Input
+                            id={`ai-${field}`}
+                            type="password"
+                            placeholder={aiCredentials[field]?.startsWith("••••") ? "Chave salva" : `Digite ${field}`}
+                            value={aiCredentials[field] || ""}
+                            onChange={(e) => setAiCredentials({ ...aiCredentials, [field]: e.target.value })}
+                          />
+                          {aiCredentials[field]?.startsWith("••••") && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setAiCredentials({ ...aiCredentials, [field]: "" })}
+                            >
+                              Alterar
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     ))}
                     <div className="flex gap-2">
