@@ -188,9 +188,26 @@ export const transcribeAudio = async (audioFile: File): Promise<{ data: { text: 
   
   console.log(`[transcribeAudio] Usando ${provider.provider} Whisper para transcrição`);
   
+  // Validar formato do arquivo
+  const supportedFormats = ['audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/wav', 'audio/webm', 'audio/m4a', 'video/mp4', 'video/webm', 'video/mpeg'];
+  const fileExtension = audioFile.name.split('.').pop()?.toLowerCase();
+  
+  console.log(`[transcribeAudio] Extensão do arquivo: ${fileExtension}, Tipo MIME: ${audioFile.type}`);
+  
   try {
     const formData = new FormData();
-    formData.append('file', audioFile);
+    
+    // Garantir que o arquivo tem uma extensão reconhecível
+    let fileName = audioFile.name;
+    if (!fileExtension || !['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm'].includes(fileExtension)) {
+      // Se não tem extensão válida, adicionar .mp3 como padrão
+      fileName = `${audioFile.name}.mp3`;
+      console.log(`[transcribeAudio] Adicionando extensão padrão ao arquivo: ${fileName}`);
+    }
+    
+    // Criar um novo File com o nome correto
+    const fileWithExtension = new File([audioFile], fileName, { type: audioFile.type || 'audio/mpeg' });
+    formData.append('file', fileWithExtension);
     
     // Groq usa modelo diferente para Whisper
     const modelName = provider.provider === "groq" ? "whisper-large-v3" : "whisper-1";
