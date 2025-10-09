@@ -221,10 +221,14 @@ export function ConversationsList({
     <Card className="h-full flex flex-col">
       <div className="p-4 border-b space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Button 
+            size="icon"
+            variant="ghost"
+            className="h-9 w-9"
+            title="Conversas"
+          >
             <MessageSquare className="w-5 h-5" />
-            Conversas
-          </h2>
+          </Button>
           <div className="flex gap-2 items-center">
             <Button 
               size="icon"
