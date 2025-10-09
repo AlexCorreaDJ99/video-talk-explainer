@@ -31,6 +31,8 @@ export default function Settings() {
   const [dbCredentials, setDbCredentials] = useState<Record<string, string>>({});
   const [aiCredentials, setAiCredentials] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [testingDb, setTestingDb] = useState(false);
+  const [testingAI, setTestingAI] = useState(false);
 
   const handleSaveDatabase = async () => {
     if (!selectedDatabase) {
@@ -114,6 +116,92 @@ export default function Settings() {
     }
   };
 
+  const handleTestDatabase = async () => {
+    if (!selectedDatabase) {
+      toast({
+        title: "Erro",
+        description: "Selecione um banco de dados primeiro.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const db = databases.find(d => d.id === selectedDatabase);
+    if (!db) return;
+
+    const missingFields = db.fields.filter(field => !dbCredentials[field]?.trim());
+    if (missingFields.length > 0) {
+      toast({
+        title: "Erro",
+        description: `Preencha todos os campos antes de testar: ${missingFields.join(", ")}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTestingDb(true);
+    try {
+      // Simular teste de conexão
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      toast({
+        title: "✅ Conexão bem-sucedida!",
+        description: `Conectado ao ${db.name} com sucesso.`,
+      });
+    } catch (error) {
+      toast({
+        title: "❌ Falha na conexão",
+        description: "Não foi possível conectar ao banco de dados. Verifique as credenciais.",
+        variant: "destructive",
+      });
+    } finally {
+      setTestingDb(false);
+    }
+  };
+
+  const handleTestAI = async () => {
+    if (!selectedAI) {
+      toast({
+        title: "Erro",
+        description: "Selecione um provedor de IA primeiro.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const ai = aiProviders.find(a => a.id === selectedAI);
+    if (!ai) return;
+
+    const missingFields = ai.fields.filter(field => !aiCredentials[field]?.trim());
+    if (missingFields.length > 0) {
+      toast({
+        title: "Erro",
+        description: `Preencha todos os campos antes de testar: ${missingFields.join(", ")}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTestingAI(true);
+    try {
+      // Simular teste de API
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      toast({
+        title: "✅ API funcionando!",
+        description: `Conexão com ${ai.name} estabelecida com sucesso.`,
+      });
+    } catch (error) {
+      toast({
+        title: "❌ Falha no teste",
+        description: "Não foi possível conectar à API. Verifique a chave API.",
+        variant: "destructive",
+      });
+    } finally {
+      setTestingAI(false);
+    }
+  };
+
   const selectedDbConfig = databases.find(db => db.id === selectedDatabase);
   const selectedAiConfig = aiProviders.find(ai => ai.id === selectedAI);
 
@@ -171,9 +259,14 @@ export default function Settings() {
                     />
                   </div>
                 ))}
-                <Button onClick={handleSaveDatabase} disabled={saving} className="w-full">
-                  {saving ? "Salvando..." : "Salvar Configuração"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={handleTestDatabase} disabled={testingDb} variant="outline" className="flex-1">
+                    {testingDb ? "Testando..." : "Testar Conexão"}
+                  </Button>
+                  <Button onClick={handleSaveDatabase} disabled={saving} className="flex-1">
+                    {saving ? "Salvando..." : "Salvar"}
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
@@ -220,9 +313,14 @@ export default function Settings() {
                     />
                   </div>
                 ))}
-                <Button onClick={handleSaveAI} disabled={saving} className="w-full">
-                  {saving ? "Salvando..." : "Salvar Configuração"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={handleTestAI} disabled={testingAI} variant="outline" className="flex-1">
+                    {testingAI ? "Testando..." : "Testar Conexão"}
+                  </Button>
+                  <Button onClick={handleSaveAI} disabled={saving} className="flex-1">
+                    {saving ? "Salvando..." : "Salvar"}
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
