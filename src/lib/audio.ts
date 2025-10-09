@@ -5,23 +5,32 @@ export const convertToWavIfNeeded = async (file: File): Promise<File> => {
   const ext = file.name.split('.').pop()?.toLowerCase();
   const supportedExt = ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm'];
   const isOgg = file.type === 'audio/ogg' || file.type === 'application/ogg' || ext === 'ogg';
+  const isVideo = file.type.startsWith('video/');
 
-  // Whisper aceita MP4/vídeos diretamente - só converter OGG e formatos não suportados
-  const needsConversion = isOgg && !supportedExt.includes(ext || '');
+  // Converter vídeos e OGG (Groq não aceita vídeos, OpenAI aceita)
+  const needsConversion = isVideo || (isOgg && !supportedExt.includes(ext || ''));
   
   // Se não precisa conversão, retornar
   if (!needsConversion) return file;
 
-  // Converter OGG para WAV usando decodeAudioData
+  // Converter para WAV
   const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  const arrayBuffer = await file.arrayBuffer();
-  const audioBuffer = await new Promise<AudioBuffer>((resolve, reject) => {
-    audioCtx.decodeAudioData(
-      arrayBuffer.slice(0),
-      (buf) => resolve(buf),
-      (err) => reject(err)
-    );
-  });
+  
+  // Para vídeos, extrair áudio; para OGG, decodificar diretamente
+  const audioBuffer: AudioBuffer = await (async () => {
+    if (isVideo) {
+      return await extractAudioFromVideo(file, audioCtx);
+    } else {
+      const arrayBuffer = await file.arrayBuffer();
+      return await new Promise<AudioBuffer>((resolve, reject) => {
+        audioCtx.decodeAudioData(
+          arrayBuffer.slice(0),
+          (buf) => resolve(buf),
+          (err) => reject(err)
+        );
+      });
+    }
+  })();
 
   const wavBuffer = encodeWav(audioBuffer);
   const wavBlob = new Blob([wavBuffer], { type: 'audio/wav' });

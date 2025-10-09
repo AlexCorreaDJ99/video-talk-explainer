@@ -189,24 +189,31 @@ export const transcribeAudio = async (audioFile: File): Promise<{ data: { text: 
   console.log(`[transcribeAudio] Usando ${provider.provider} Whisper para transcrição`);
   
   // Validar formato do arquivo
-  const supportedFormats = ['audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/wav', 'audio/webm', 'audio/m4a', 'video/mp4', 'video/webm', 'video/mpeg'];
   const fileExtension = audioFile.name.split('.').pop()?.toLowerCase();
+  const isVideo = audioFile.type.startsWith('video/');
   
-  console.log(`[transcribeAudio] Extensão do arquivo: ${fileExtension}, Tipo MIME: ${audioFile.type}`);
+  console.log(`[transcribeAudio] Extensão: ${fileExtension}, Tipo: ${audioFile.type}, É vídeo: ${isVideo}`);
   
   try {
+    // Groq não aceita vídeos - converter para áudio primeiro
+    let fileToSend = audioFile;
+    if (provider.provider === "groq" && isVideo) {
+      console.log(`[transcribeAudio] Groq não aceita vídeos - convertendo para WAV...`);
+      const { convertToWavIfNeeded } = await import('./audio');
+      fileToSend = await convertToWavIfNeeded(audioFile);
+    }
+    
     const formData = new FormData();
     
     // Garantir que o arquivo tem uma extensão reconhecível
-    let fileName = audioFile.name;
-    if (!fileExtension || !['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm'].includes(fileExtension)) {
-      // Se não tem extensão válida, adicionar .mp3 como padrão
-      fileName = `${audioFile.name}.mp3`;
-      console.log(`[transcribeAudio] Adicionando extensão padrão ao arquivo: ${fileName}`);
+    let fileName = fileToSend.name;
+    const ext = fileToSend.name.split('.').pop()?.toLowerCase();
+    if (!ext || !['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm'].includes(ext)) {
+      fileName = `${fileToSend.name}.mp3`;
+      console.log(`[transcribeAudio] Adicionando extensão padrão: ${fileName}`);
     }
     
-    // Criar um novo File com o nome correto
-    const fileWithExtension = new File([audioFile], fileName, { type: audioFile.type || 'audio/mpeg' });
+    const fileWithExtension = new File([fileToSend], fileName, { type: fileToSend.type || 'audio/mpeg' });
     formData.append('file', fileWithExtension);
     
     // Groq usa modelo diferente para Whisper
