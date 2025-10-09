@@ -1,15 +1,24 @@
-// Serviço de IA - Desenvolvido por Alex Correa Gomes
+// Serviço de IA com Roteamento Inteligente - Desenvolvido por Alex Correa Gomes
 import { supabase } from "@/integrations/supabase/client";
 import { getStorageMode } from "./storage";
+import {
+  getProviderForContent,
+  getMultiAIConfig,
+  type ContentType,
+  type ProviderConfig,
+  type AIProvider,
+} from "./ai-config";
 
+// COMPATIBILIDADE: Manter interface antiga para não quebrar código existente
 interface AIConfig {
-  provider: "lovable" | "openai" | "groq" | "anthropic" | "google";
+  provider: AIProvider;
   apiKey?: string;
-  model?: string; // Modelo específico do provedor
+  model?: string;
 }
 
 const AI_CONFIG_KEY = "ai-config";
 
+// DEPRECATED: Usar getMultiAIConfig() da ai-config.ts
 export const getAIConfig = (): AIConfig => {
   const config = localStorage.getItem(AI_CONFIG_KEY);
   if (!config) {
@@ -18,25 +27,60 @@ export const getAIConfig = (): AIConfig => {
   return JSON.parse(config);
 };
 
+// DEPRECATED: Usar updateProvider() da ai-config.ts
 export const setAIConfig = (config: AIConfig) => {
   localStorage.setItem(AI_CONFIG_KEY, JSON.stringify(config));
 };
 
-// Analisar vídeo/áudio
+// NOVO: Escolher automaticamente qual IA usar baseado no tipo de conteúdo
+const selectAIForContent = (contentType: ContentType): ProviderConfig | null => {
+  console.log(`[AI Router] Selecionando IA para tipo: ${contentType}`);
+  
+  const provider = getProviderForContent(contentType);
+  
+  if (provider) {
+    console.log(`[AI Router] ✓ Selecionado: ${provider.provider} (modelo: ${provider.model || "padrão"})`);
+  } else {
+    console.warn(`[AI Router] ⚠️ Nenhum provedor disponível para ${contentType}`);
+  }
+  
+  return provider;
+};
+
+// Analisar vídeo/áudio - COM ROTEAMENTO INTELIGENTE
 export const analyzeVideo = async (data: {
   transcricao: string;
   tipo: string;
 }) => {
   const storageMode = getStorageMode();
-  const aiConfig = getAIConfig();
-
+  
+  // Determinar tipo de conteúdo
+  let contentType: ContentType = "texto";
+  if (data.tipo.includes("vídeo")) contentType = "video";
+  else if (data.tipo.includes("áudio")) contentType = "audio";
+  else if (data.tipo.includes("imagem")) contentType = "imagem";
+  
+  console.log(`[analyzeVideo] Tipo de conteúdo: ${contentType}, Modo: ${storageMode}`);
+  
+  // Selecionar IA apropriada
+  const provider = selectAIForContent(contentType);
+  
+  if (!provider) {
+    return {
+      data: null,
+      error: { message: "❌ Nenhuma IA configurada para este tipo de conteúdo. Configure em Configurações." },
+    };
+  }
+  
   // Se estiver em modo remoto e usar Lovable AI, retornar erro para usar edge function
-  if (storageMode === "remote" && aiConfig.provider === "lovable") {
+  if (storageMode === "remote" && provider.provider === "lovable") {
     return {
       data: null,
       error: { message: "Use a edge function diretamente para Lovable AI em modo remoto" },
     };
   }
+
+  console.log(`[analyzeVideo] Usando ${provider.provider} para análise`);
 
   // Modo local ou API externa configurada
   return await callExternalAI({
@@ -56,24 +100,44 @@ Analise a seguinte transcrição de ${data.tipo} e retorne APENAS um JSON válid
 
 Transcrição a analisar:
 ${data.transcricao}`,
-    config: aiConfig,
+    config: {
+      provider: provider.provider,
+      apiKey: provider.apiKey,
+      model: provider.model,
+    },
   });
 };
 
-// Analisar evidências
+// Analisar evidências - COM ROTEAMENTO INTELIGENTE
 export const analyzeEvidence = async (data: {
   conversation_id: string;
   evidencias: Array<{ tipo: string; conteudo: string; nome_arquivo?: string }>;
 }) => {
   const storageMode = getStorageMode();
-  const aiConfig = getAIConfig();
+  
+  // Detectar tipo de evidências (se tem imagens, usar IA com suporte a visão)
+  const hasImages = data.evidencias.some(e => e.tipo.includes("imagem") || e.tipo.includes("screenshot"));
+  const contentType: ContentType = hasImages ? "imagem" : "texto";
+  
+  console.log(`[analyzeEvidence] Tipo de conteúdo: ${contentType}, Has images: ${hasImages}`);
+  
+  const provider = selectAIForContent(contentType);
+  
+  if (!provider) {
+    return {
+      data: null,
+      error: { message: "❌ Nenhuma IA configurada para analisar evidências. Configure em Configurações." },
+    };
+  }
 
-  if (storageMode === "remote" && aiConfig.provider === "lovable") {
+  if (storageMode === "remote" && provider.provider === "lovable") {
     const { data: result, error } = await supabase.functions.invoke("analyze-evidence", {
       body: data,
     });
     return { data: result, error };
   }
+
+  console.log(`[analyzeEvidence] Usando ${provider.provider} para análise`);
 
   return await callExternalAI({
     prompt: `Analise as seguintes evidências e forneça uma análise detalhada em português:
@@ -85,21 +149,36 @@ Retorne uma análise detalhada identificando:
 - Possíveis causas
 - Recomendações de solução
 - Nível de gravidade`,
-    config: aiConfig,
+    config: {
+      provider: provider.provider,
+      apiKey: provider.apiKey,
+      model: provider.model,
+    },
   });
 };
 
-// Gerar relatório IT
+// Gerar relatório IT - COM ROTEAMENTO INTELIGENTE
 export const generateITReport = async (data: any) => {
   const storageMode = getStorageMode();
-  const aiConfig = getAIConfig();
+  
+  // Relatórios são principalmente texto, usar IA otimizada para texto
+  const provider = selectAIForContent("texto");
+  
+  if (!provider) {
+    return {
+      data: null,
+      error: { message: "❌ Nenhuma IA configurada para gerar relatórios. Configure em Configurações." },
+    };
+  }
 
-  if (storageMode === "remote" && aiConfig.provider === "lovable") {
+  if (storageMode === "remote" && provider.provider === "lovable") {
     const { data: result, error } = await supabase.functions.invoke("generate-it-report", {
       body: data,
     });
     return { data: result, error };
   }
+
+  console.log(`[generateITReport] Usando ${provider.provider} para gerar relatório`);
 
   return await callExternalAI({
     prompt: `Gere um relatório técnico detalhado em português baseado nas seguintes informações:
@@ -117,7 +196,11 @@ Gere um relatório técnico completo para a equipe de TI com:
 3. Análise Técnica
 4. Solução Aplicada (se houver)
 5. Recomendações`,
-    config: aiConfig,
+    config: {
+      provider: provider.provider,
+      apiKey: provider.apiKey,
+      model: provider.model,
+    },
   });
 };
 
