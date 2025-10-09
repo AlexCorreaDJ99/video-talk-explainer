@@ -2,10 +2,13 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { ArrowLeft, TrendingUp, MessageSquare, AlertCircle, Clock } from "lucide-react";
+import { ArrowLeft, TrendingUp, MessageSquare, AlertCircle, Clock, Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { AnalysisBadge } from "@/components/AnalysisBadge";
+import { EditClassificationDialog } from "@/components/EditClassificationDialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface AnalysisStats {
   totalAnalises: number;
@@ -26,6 +29,7 @@ interface AnalysisStats {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [stats, setStats] = useState<AnalysisStats>({
     totalAnalises: 0,
     porCategoria: {},
@@ -34,6 +38,9 @@ export default function Dashboard() {
     recentes: [],
   });
   const [loading, setLoading] = useState(true);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<any>(null);
 
   useEffect(() => {
     loadStats();
@@ -102,6 +109,51 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEdit = (analysis: any) => {
+    setSelectedAnalysis(analysis);
+    setEditDialogOpen(true);
+  };
+
+  const handleDeleteClick = (analysis: any) => {
+    setSelectedAnalysis(analysis);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedAnalysis) return;
+
+    try {
+      const { error } = await supabase
+        .from("analyses")
+        .delete()
+        .eq("id", selectedAnalysis.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Análise excluída!",
+        description: "A análise foi removida com sucesso.",
+      });
+
+      loadStats();
+    } catch (error) {
+      console.error("Erro ao excluir análise:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao excluir",
+        description: "Não foi possível excluir a análise.",
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setSelectedAnalysis(null);
+    }
+  };
+
+  const handleUpdateClassification = () => {
+    loadStats();
+    setEditDialogOpen(false);
   };
 
   const categoriaData = Object.entries(stats.porCategoria).map(([name, value]) => ({
@@ -248,10 +300,9 @@ export default function Dashboard() {
               {stats.recentes.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent/5 transition-colors cursor-pointer"
-                  onClick={() => navigate("/")}
+                  className="flex items-start justify-between p-4 border rounded-lg hover:bg-accent/5 transition-colors"
                 >
-                  <div className="flex-1 space-y-2">
+                  <div className="flex-1 space-y-2 cursor-pointer" onClick={() => navigate("/")}>
                     <div className="flex items-center gap-2">
                       <p className="font-medium">{item.cliente}</p>
                       <span className="text-xs text-muted-foreground">
@@ -265,12 +316,65 @@ export default function Dashboard() {
                       <AnalysisBadge type="categoria" value={item.categoria} size="sm" />
                     </div>
                   </div>
+                  <div className="flex gap-2 ml-4">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(item);
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteClick(item);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {selectedAnalysis && (
+        <EditClassificationDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          conversationId={selectedAnalysis.conversation_id}
+          currentData={{
+            urgencia: selectedAnalysis.urgencia,
+            sentimento: selectedAnalysis.sentimento,
+            categoria: selectedAnalysis.categoria,
+          }}
+          onUpdate={handleUpdateClassification}
+        />
+      )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir análise?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. A análise será permanentemente excluída.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
