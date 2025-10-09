@@ -159,21 +159,32 @@ export default function Settings() {
     const ai = aiProviders.find(a => a.id === selectedAI);
     if (!ai) return;
 
-    const missingFields = ai.fields.filter(field => !aiCredentials[field]?.trim());
-    if (missingFields.length > 0) {
-      toast({
-        title: "Erro",
-        description: `Preencha todos os campos: ${missingFields.join(", ")}`,
-        variant: "destructive",
-      });
-      return;
+    // Lovable AI não precisa de API key
+    if (selectedAI !== "lovable") {
+      const missingFields = ai.fields.filter(field => !aiCredentials[field]?.trim());
+      if (missingFields.length > 0) {
+        toast({
+          title: "Erro",
+          description: `Preencha todos os campos: ${missingFields.join(", ")}`,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setSaving(true);
     try {
+      // Importar dinamicamente para evitar erro se o módulo não existir
+      const { setAIConfig } = await import("@/lib/ai-service");
+      
+      setAIConfig({
+        provider: selectedAI as any,
+        apiKey: aiCredentials["API Key"],
+      });
+
       toast({
         title: "Configuração salva",
-        description: `API key do ${ai.name} salva com sucesso!`,
+        description: `${ai.name} configurado com sucesso!`,
       });
       setAiCredentials({});
     } catch (error) {
@@ -433,26 +444,37 @@ export default function Settings() {
 
             {selectedAiConfig && (
               <div className="space-y-4 pt-4 border-t">
-                {selectedAiConfig.fields.map((field) => (
-                  <div key={field} className="space-y-2">
-                    <Label htmlFor={`ai-${field}`}>{field}</Label>
-                    <Input
-                      id={`ai-${field}`}
-                      type="password"
-                      placeholder={`Digite ${field}`}
-                      value={aiCredentials[field] || ""}
-                      onChange={(e) => setAiCredentials({ ...aiCredentials, [field]: e.target.value })}
-                    />
+                {selectedAI === "lovable" ? (
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">
+                      <strong>Lovable AI</strong> funciona automaticamente quando conectado ao Lovable Cloud.
+                      Para uso local, escolha outro provedor e configure sua API key.
+                    </p>
                   </div>
-                ))}
-                <div className="flex gap-2">
-                  <Button onClick={handleTestAI} disabled={testingAI} variant="outline" className="flex-1">
-                    {testingAI ? "Testando..." : "Testar Conexão"}
-                  </Button>
-                  <Button onClick={handleSaveAI} disabled={saving} className="flex-1">
-                    {saving ? "Salvando..." : "Salvar"}
-                  </Button>
-                </div>
+                ) : (
+                  <>
+                    {selectedAiConfig.fields.map((field) => (
+                      <div key={field} className="space-y-2">
+                        <Label htmlFor={`ai-${field}`}>{field}</Label>
+                        <Input
+                          id={`ai-${field}`}
+                          type="password"
+                          placeholder={`Digite ${field}`}
+                          value={aiCredentials[field] || ""}
+                          onChange={(e) => setAiCredentials({ ...aiCredentials, [field]: e.target.value })}
+                        />
+                      </div>
+                    ))}
+                    <div className="flex gap-2">
+                      <Button onClick={handleTestAI} disabled={testingAI} variant="outline" className="flex-1">
+                        {testingAI ? "Testando..." : "Testar Conexão"}
+                      </Button>
+                      <Button onClick={handleSaveAI} disabled={saving} className="flex-1">
+                        {saving ? "Salvando..." : "Salvar"}
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </CardContent>

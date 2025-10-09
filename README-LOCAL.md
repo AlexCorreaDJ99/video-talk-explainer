@@ -1,9 +1,10 @@
-# 🏠 Executar Aplicação Localmente
+# 🏠 Executar Aplicação Localmente - 100% Independente
 
 ## 📋 Pré-requisitos
 
 - **Node.js** versão 18 ou superior
 - **npm** ou **bun** para gerenciar pacotes
+- **(Opcional)** API Keys de provedores de IA (OpenAI, Groq, Anthropic, Google)
 
 ## 🚀 Instalação e Execução
 
@@ -22,18 +23,7 @@ npm install
 bun install
 ```
 
-### 3. Configurar Variáveis de Ambiente (Opcional)
-
-Se você quiser usar o banco de dados remoto (Supabase), crie um arquivo `.env` na raiz do projeto:
-
-```env
-VITE_SUPABASE_URL=sua-url-do-supabase
-VITE_SUPABASE_PUBLISHABLE_KEY=sua-chave-publica
-```
-
-**Nota:** Se você não configurar isso, a aplicação funcionará perfeitamente em **modo local** usando o localStorage do navegador.
-
-### 4. Executar em Desenvolvimento
+### 3. Executar em Desenvolvimento
 
 ```bash
 npm run dev
@@ -43,7 +33,7 @@ bun run dev
 
 A aplicação estará disponível em: `http://localhost:5173`
 
-### 5. Build para Produção
+### 4. Build para Produção
 
 ```bash
 npm run build
@@ -53,52 +43,72 @@ bun run build
 
 Os arquivos otimizados estarão na pasta `dist/`
 
-### 6. Preview da Build
+## ⚙️ Configuração para Uso Local (Sem Lovable)
 
-```bash
-npm run preview
-# ou
-bun run preview
-```
+### Passo 1: Configurar Armazenamento Local
 
-## 💾 Modos de Armazenamento
+1. Abra a aplicação em `http://localhost:5173`
+2. Vá em **Configurações** (ícone de engrenagem)
+3. Na seção **"Modo de Armazenamento"**, selecione:
+   - ✅ **Armazenamento Local (Navegador)**
 
-### Modo Local (Padrão)
-- **Vantagens:**
-  - 100% offline
-  - Não requer configuração
-  - Dados salvos no navegador
-  - Zero custo
-  
-- **Desvantagens:**
-  - Dados limitados a um navegador
-  - Podem ser apagados ao limpar cache
-  - Não sincroniza entre dispositivos
+Pronto! Seus dados agora são salvos localmente no navegador.
 
-### Modo Remoto (Nuvem)
-- **Vantagens:**
-  - Sincronização entre dispositivos
-  - Backup automático
-  - Acesso de qualquer lugar
-  
-- **Desvantagens:**
-  - Requer conexão com internet
-  - Necessita configuração do Supabase
+### Passo 2: Configurar IA (Opcional)
 
-## 🔧 Mudando o Modo de Armazenamento
+Para usar funcionalidades de IA (análise de vídeo/áudio), configure um provedor:
 
-1. Acesse a página de **Configurações** no aplicativo
-2. Na seção "Modo de Armazenamento", escolha:
-   - **Banco de Dados Remoto (Nuvem)** - Requer Supabase configurado
-   - **Armazenamento Local (Navegador)** - Funciona offline
+#### Opção 1: OpenAI (Recomendado)
+1. Crie uma conta em https://platform.openai.com/
+2. Gere uma API Key em https://platform.openai.com/api-keys
+3. Na página de **Configurações** do app:
+   - Seção **"Cérebro (IA)"**
+   - Selecione **"OpenAI"**
+   - Cole sua API Key
+   - Clique em **"Testar Conexão"**
+   - Clique em **"Salvar"**
 
-## 📦 Backup dos Dados Locais
+#### Opção 2: Groq (Mais Rápido e Gratuito)
+1. Crie uma conta em https://console.groq.com/
+2. Gere uma API Key
+3. Configure conforme acima, selecionando **"Groq"**
 
-Se você está usando o modo local:
+#### Opção 3: Anthropic Claude
+1. Crie uma conta em https://console.anthropic.com/
+2. Gere uma API Key
+3. Configure conforme acima, selecionando **"Anthropic Claude"**
 
-1. Vá em **Configurações** → **Modo de Armazenamento**
-2. Clique em **"Exportar Backup"** para baixar seus dados
-3. Use **"Importar Backup"** para restaurar dados salvos
+#### Opção 4: Google AI (Gemini)
+1. Acesse https://ai.google.dev/
+2. Gere uma API Key
+3. Configure conforme acima, selecionando **"Google AI (Gemini)"**
+
+### Passo 3: Usar a Aplicação
+
+Agora você pode:
+- ✅ Criar conversas
+- ✅ Adicionar análises
+- ✅ Fazer upload de evidências
+- ✅ Usar IA para análise (se configurou API)
+- ✅ Gerar relatórios
+- ✅ Tudo funciona 100% offline (exceto chamadas de IA)
+
+## 💾 Gerenciamento de Dados
+
+### Exportar Backup
+1. Configurações → Modo de Armazenamento
+2. Clique em **"Exportar Backup"**
+3. Arquivo JSON será baixado
+
+### Importar Backup
+1. Configurações → Modo de Armazenamento
+2. Clique em **"Importar Backup"**
+3. Selecione o arquivo JSON
+
+### Limpar Dados
+1. Configurações → Modo de Armazenamento
+2. Clique em **"Limpar Dados"**
+3. Confirme a ação
 
 ## 🌐 Executar em Rede Local
 
@@ -112,15 +122,13 @@ Acesse usando o IP da sua máquina: `http://192.168.x.x:5173`
 
 ## 📱 Versão PWA (Progressive Web App)
 
-A aplicação pode ser instalada como um app no seu dispositivo:
+A aplicação pode ser instalada como um app:
 
 1. Acesse a aplicação no navegador
-2. Clique no ícone de instalação (geralmente na barra de endereços)
+2. Clique no ícone de instalação (barra de endereços)
 3. Confirme a instalação
 
-Agora você pode usar como um aplicativo nativo!
-
-## 🐳 Docker (Opcional)
+## 🐳 Docker
 
 Crie um `Dockerfile`:
 
@@ -142,6 +150,42 @@ docker build -t video-talk-explainer .
 docker run -p 5173:5173 video-talk-explainer
 ```
 
+Ou use Docker Compose (`docker-compose.yml`):
+
+```yaml
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./dist:/app/dist
+```
+
+```bash
+docker-compose up
+```
+
+## 🔒 Segurança
+
+- ✅ API Keys são armazenadas localmente no navegador
+- ✅ Dados nunca saem do seu dispositivo (modo local)
+- ✅ Sem rastreamento ou telemetria
+- ⚠️ Faça backups regularmente!
+
+## 💰 Custos
+
+### Modo Local (Gratuito)
+- Armazenamento: **Grátis**
+- Funcionalidades básicas: **Grátis**
+
+### IA (Pago)
+- **OpenAI**: ~$0.002 por análise (GPT-4o-mini)
+- **Groq**: Grátis (até 14k requisições/dia)
+- **Anthropic**: ~$0.003 por análise (Claude Sonnet)
+- **Google AI**: Grátis (até 60 req/min)
+
 ## ❓ Solução de Problemas
 
 ### Porta já em uso
@@ -151,16 +195,54 @@ npm run dev -- --port 3000
 
 ### Erro de permissões
 ```bash
-sudo npm install -g npm@latest
+npm cache clean --force
+rm -rf node_modules package-lock.json
+npm install
 ```
 
 ### Cache do navegador
-Limpe o cache ou use modo anônimo para testar
+Limpe o cache ou use modo anônimo
+
+### API Key não funciona
+- Verifique se copiou corretamente
+- Confirme se tem créditos (OpenAI/Anthropic)
+- Teste a conexão antes de salvar
+
+## 📂 Estrutura de Pastas
+
+```
+video-talk-explainer/
+├── src/
+│   ├── components/     # Componentes React
+│   ├── pages/          # Páginas da aplicação
+│   ├── lib/            # Utilitários
+│   │   ├── storage.ts  # Sistema de armazenamento
+│   │   └── ai-service.ts # Serviço de IA
+│   └── main.tsx        # Entrada principal
+├── public/             # Arquivos estáticos
+├── dist/               # Build de produção
+└── package.json        # Dependências
+```
+
+## 🎯 Funcionalidades
+
+- ✅ Gerenciamento de conversas
+- ✅ Análise de vídeo/áudio com IA
+- ✅ Upload de evidências
+- ✅ Classificação automática
+- ✅ Geração de relatórios
+- ✅ Dashboard com métricas
+- ✅ Modo escuro/claro
+- ✅ 100% offline (exceto IA)
 
 ## 📞 Suporte
 
-Para problemas ou dúvidas, abra uma issue no repositório.
+Para problemas ou dúvidas:
+- Abra uma issue no repositório
+- Consulte a documentação em `/docs`
 
 ---
 
 **Desenvolvido com ❤️ usando React + Vite + TypeScript**
+
+**Licença:** MIT
