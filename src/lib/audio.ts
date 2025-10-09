@@ -5,28 +5,114 @@ export const convertToWavIfNeeded = async (file: File): Promise<File> => {
   const ext = file.name.split('.').pop()?.toLowerCase();
   const supportedExt = ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm'];
   const isOgg = file.type === 'audio/ogg' || file.type === 'application/ogg' || ext === 'ogg';
+  const isVideo = file.type.startsWith('video/');
 
-  // Se já for suportado e não for OGG, não precisa converter
-  if (supportedExt.includes(ext || '') && !isOgg) return file;
+  // Para vídeos ou OGG, sempre converter para extrair/garantir compatibilidade de áudio
+  const needsConversion = isOgg || isVideo;
+  
+  // Se já for suportado e não precisar conversão, retornar
+  if (supportedExt.includes(ext || '') && !needsConversion) return file;
 
   // Converter para WAV
-  const arrayBuffer = await file.arrayBuffer();
   const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-
-  const audioBuffer: AudioBuffer = await new Promise((resolve, reject) => {
-    // Algumas versões tipadas do TS exigem callback-style
-    audioCtx.decodeAudioData(
-      arrayBuffer.slice(0),
-      (buf) => resolve(buf),
-      (err) => reject(err)
-    );
-  });
+  
+  // Para vídeos, precisamos usar um elemento de mídia para extrair o áudio
+  const audioBuffer: AudioBuffer = await (async () => {
+    if (isVideo) {
+      return await extractAudioFromVideo(file, audioCtx);
+    } else {
+      // Para áudio, podemos usar decodeAudioData diretamente
+      const arrayBuffer = await file.arrayBuffer();
+      return await new Promise<AudioBuffer>((resolve, reject) => {
+        audioCtx.decodeAudioData(
+          arrayBuffer.slice(0),
+          (buf) => resolve(buf),
+          (err) => reject(err)
+        );
+      });
+    }
+  })();
 
   const wavBuffer = encodeWav(audioBuffer);
   const wavBlob = new Blob([wavBuffer], { type: 'audio/wav' });
   const wavName = file.name.replace(/\.[^./]+$/, '') + '.wav';
   return new File([wavBlob], wavName, { type: 'audio/wav' });
 };
+
+// Extrai áudio de arquivo de vídeo usando MediaElementSource
+async function extractAudioFromVideo(file: File, audioCtx: AudioContext): Promise<AudioBuffer> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    video.crossOrigin = 'anonymous';
+    
+    const url = URL.createObjectURL(file);
+    video.src = url;
+    
+    video.onloadedmetadata = async () => {
+      try {
+        const duration = video.duration;
+        if (!duration || isNaN(duration)) {
+          URL.revokeObjectURL(url);
+          reject(new Error('Vídeo sem trilha de áudio ou inválido'));
+          return;
+        }
+        
+        // Criar source e destination para capturar o áudio
+        const source = audioCtx.createMediaElementSource(video);
+        const dest = audioCtx.createMediaStreamDestination();
+        source.connect(dest);
+        
+        // Usar MediaRecorder para gravar o áudio
+        const mediaRecorder = new MediaRecorder(dest.stream, { 
+          mimeType: 'audio/webm;codecs=opus' 
+        });
+        
+        const chunks: Blob[] = [];
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data);
+        };
+        
+        mediaRecorder.onstop = async () => {
+          URL.revokeObjectURL(url);
+          try {
+            const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+            const arrayBuffer = await audioBlob.arrayBuffer();
+            const buffer = await audioCtx.decodeAudioData(arrayBuffer);
+            resolve(buffer);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        
+        mediaRecorder.start();
+        video.play();
+        
+        // Parar gravação quando terminar
+        video.onended = () => {
+          mediaRecorder.stop();
+        };
+        
+        // Fallback: parar após a duração + 1s
+        setTimeout(() => {
+          if (mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+          }
+        }, (duration + 1) * 1000);
+        
+      } catch (err) {
+        URL.revokeObjectURL(url);
+        reject(err);
+      }
+    };
+    
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Erro ao carregar vídeo'));
+    };
+  });
+}
 
 // Codifica AudioBuffer para WAV PCM 16-bit little-endian
 function encodeWav(audioBuffer: AudioBuffer): ArrayBuffer {
