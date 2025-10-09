@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      acessos_clientes: {
+        Row: {
+          cliente_nome: string
+          created_at: string
+          id: string
+          login: string
+          observacoes: string | null
+          senha: string
+          updated_at: string
+        }
+        Insert: {
+          cliente_nome: string
+          created_at?: string
+          id?: string
+          login: string
+          observacoes?: string | null
+          senha: string
+          updated_at?: string
+        }
+        Update: {
+          cliente_nome?: string
+          created_at?: string
+          id?: string
+          login?: string
+          observacoes?: string | null
+          senha?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       analyses: {
         Row: {
           analise_data: Json | null
