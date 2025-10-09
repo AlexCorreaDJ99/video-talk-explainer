@@ -225,12 +225,13 @@ export function ConversationsList({
             <MessageSquare className="w-5 h-5" />
             Conversas
           </h2>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <Button 
               size="sm" 
               variant="outline"
               onClick={() => navigate("/dashboard")}
               title="Dashboard"
+              className="h-8 w-8 p-0"
             >
               <BarChart3 className="w-4 h-4" />
             </Button>
@@ -239,6 +240,7 @@ export function ConversationsList({
               variant="outline"
               onClick={() => navigate("/acessos-clientes")}
               title="Acessos de Clientes"
+              className="h-8 w-8 p-0"
             >
               <KeyRound className="w-4 h-4" />
             </Button>
@@ -247,13 +249,14 @@ export function ConversationsList({
               variant="outline"
               onClick={() => navigate("/settings")}
               title="Configurações"
+              className="h-8 w-8 p-0"
             >
               <Settings className="w-4 h-4" />
             </Button>
             <Button 
               size="sm" 
               onClick={onNewConversation}
-              className="gap-2"
+              className="gap-2 h-8"
             >
               <Plus className="w-4 h-4" />
               Nova
