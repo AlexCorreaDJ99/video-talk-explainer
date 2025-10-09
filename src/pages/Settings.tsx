@@ -21,7 +21,7 @@ const aiProviders = [
   { id: "groq", name: "Groq", fields: ["API Key"] },
   { id: "anthropic", name: "Anthropic Claude", fields: ["API Key"] },
   { id: "google", name: "Google AI (Gemini)", fields: ["API Key"] },
-  { id: "lovable", name: "Lovable AI", fields: ["API Key"] },
+  { id: "lovable", name: "IA Integrada", fields: ["API Key"] },
 ];
 
 export default function Settings() {
@@ -447,7 +447,7 @@ export default function Settings() {
                 {selectedAI === "lovable" ? (
                   <div className="p-4 bg-muted rounded-lg">
                     <p className="text-sm text-muted-foreground">
-                      <strong>Lovable AI</strong> funciona automaticamente quando conectado ao Lovable Cloud.
+                      <strong>IA Integrada</strong> funciona automaticamente quando conectado ao sistema.
                       Para uso local, escolha outro provedor e configure sua API key.
                     </p>
                   </div>

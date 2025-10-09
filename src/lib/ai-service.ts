@@ -1,4 +1,4 @@
-// Serviço de IA - Funciona com Lovable AI ou APIs externas
+// Serviço de IA - Desenvolvido por Alex Correa Gomes
 import { supabase } from "@/integrations/supabase/client";
 import { getStorageMode } from "./storage";
 
