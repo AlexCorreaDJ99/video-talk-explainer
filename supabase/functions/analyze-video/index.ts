@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,9 +48,7 @@ serve(async (req) => {
     for (const mediaFile of mediaFiles) {
       console.log('Processando áudio:', mediaFile.name, mediaFile.type);
       
-      // Converter áudio para base64 para análise via Lovable AI
-      const arrayBuffer = await mediaFile.arrayBuffer();
-      const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      // Pular conversão para base64 aqui (não utilizada) para evitar estouro de pilha com arquivos grandes
       
       // Usar Lovable AI para transcrever (simulado - Gemini não suporta áudio diretamente)
       // Alternativa: pedir ao usuário para colar a transcrição manualmente
@@ -66,7 +65,7 @@ serve(async (req) => {
     for (const imageFile of imageFiles) {
       console.log('Processando imagem:', imageFile.name);
       const arrayBuffer = await imageFile.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const base64 = encodeBase64(new Uint8Array(arrayBuffer));
       imageContents.push({
         type: "image_url",
         image_url: {
