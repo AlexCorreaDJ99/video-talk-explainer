@@ -227,36 +227,36 @@ export function ConversationsList({
           </h2>
           <div className="flex gap-2 items-center">
             <Button 
-              size="sm" 
+              size="icon"
               variant="outline"
               onClick={() => navigate("/dashboard")}
               title="Dashboard"
-              className="h-8 w-8 p-0"
+              className="h-9 w-9"
             >
               <BarChart3 className="w-4 h-4" />
             </Button>
             <Button 
-              size="sm" 
+              size="icon"
               variant="outline"
               onClick={() => navigate("/acessos-clientes")}
               title="Acessos de Clientes"
-              className="h-8 w-8 p-0"
+              className="h-9 w-9"
             >
               <KeyRound className="w-4 h-4" />
             </Button>
             <Button 
-              size="sm" 
+              size="icon"
               variant="outline"
               onClick={() => navigate("/settings")}
               title="Configurações"
-              className="h-8 w-8 p-0"
+              className="h-9 w-9"
             >
               <Settings className="w-4 h-4" />
             </Button>
             <Button 
               size="sm" 
               onClick={onNewConversation}
-              className="gap-2 h-8"
+              className="gap-2 h-9 px-3"
             >
               <Plus className="w-4 h-4" />
               Nova
