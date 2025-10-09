@@ -215,25 +215,49 @@ const Index = () => {
         
         console.log("[Modo Local] Preparando dados para análise...");
         
-        // Verificar se tem arquivos de áudio/vídeo sem transcrição
-        const hasMediaFiles = files.some(f => f.type.startsWith('video/') || f.type.startsWith('audio/'));
-        const hasOnlyImages = files.length > 0 && files.every(f => f.type.startsWith('image/'));
+        // Processar transcrição de áudio/vídeo se necessário
+        const mediaFiles = files.filter(f => f.type.startsWith('video/') || f.type.startsWith('audio/'));
+        const hasMediaFiles = mediaFiles.length > 0;
         
         if (hasMediaFiles && !pastedText) {
-          throw new Error(`⚠️ MODO OFFLINE DETECTADO\n\nO sistema detectou que está operando em modo offline e não pode realizar a transcrição automática dos arquivos de áudio e vídeo fornecidos.\n\nOpções disponíveis:\n1. Cole o texto/transcrição manualmente no campo de texto\n2. Use "Lovable AI" em modo remoto (na nuvem) para análise automática\n\nArquivos detectados:\n${files.map((f, i) => `${i + 1}. ${f.name} (${f.type})`).join('\n')}`);
+          console.log(`[Modo Local] Detectados ${mediaFiles.length} arquivo(s) de mídia para transcrição`);
+          
+          const { transcribeAudio } = await import("@/lib/ai-service");
+          const transcricoes: string[] = [];
+          
+          for (const mediaFile of mediaFiles) {
+            console.log(`[Modo Local] Transcrevendo: ${mediaFile.name}...`);
+            
+            toast({
+              title: "Transcrevendo...",
+              description: `Processando ${mediaFile.name}`,
+            });
+            
+            const result = await transcribeAudio(mediaFile);
+            
+            if (result.error) {
+              throw new Error(result.error.message);
+            }
+            
+            if (result.data?.text) {
+              transcricoes.push(`\n\n=== TRANSCRIÇÃO: ${mediaFile.name} ===\n${result.data.text}`);
+              console.log(`[Modo Local] ✓ Transcrição concluída: ${result.data.text.length} caracteres`);
+            }
+          }
+          
+          transcricao += transcricoes.join('\n');
+          
+          toast({
+            title: "✓ Transcrição Concluída",
+            description: `${mediaFiles.length} arquivo(s) transcritos com sucesso`,
+          });
         }
         
-        // Construir transcrição combinada
+        // Construir informações dos arquivos
         if (files.length > 0) {
           transcricao += '\n\n=== ARQUIVOS ENVIADOS ===\n' + files.map((f, i) => 
             `${i + 1}. ${f.name} (${f.type}) - ${(f.size / 1024).toFixed(2)} KB`
           ).join('\n');
-          
-          if (hasMediaFiles && pastedText) {
-            transcricao += '\n\n✓ Modo offline: Usando transcrição fornecida manualmente.\n';
-          } else if (hasOnlyImages) {
-            transcricao += '\n\n✓ Modo offline: Análise de imagens disponível com as APIs configuradas.\n';
-          }
         }
         
         console.log("[Modo Local] Chamando serviço de análise...");

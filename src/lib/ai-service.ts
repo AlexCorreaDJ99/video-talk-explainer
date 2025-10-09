@@ -157,6 +157,101 @@ Retorne uma análise detalhada identificando:
   });
 };
 
+// Transcrever áudio/vídeo - COM ROTEAMENTO INTELIGENTE
+export const transcribeAudio = async (audioFile: File): Promise<{ data: { text: string } | null; error: { message: string } | null }> => {
+  console.log(`[transcribeAudio] Processando arquivo: ${audioFile.name} (${audioFile.type})`);
+  
+  // Selecionar provedor que suporta transcrição (áudio)
+  const provider = selectAIForContent("audio");
+  
+  if (!provider) {
+    return {
+      data: null,
+      error: { message: "❌ Nenhuma IA configurada para transcrição de áudio. Configure OpenAI ou Groq em Configurações." },
+    };
+  }
+  
+  // Apenas OpenAI e Groq têm Whisper
+  if (provider.provider !== "openai" && provider.provider !== "groq") {
+    return {
+      data: null,
+      error: { message: `❌ O provedor ${provider.provider} não suporta transcrição de áudio. Use OpenAI ou Groq.` },
+    };
+  }
+  
+  if (!provider.apiKey) {
+    return {
+      data: null,
+      error: { message: `❌ API Key não configurada para ${provider.provider}. Configure em Configurações.` },
+    };
+  }
+  
+  console.log(`[transcribeAudio] Usando ${provider.provider} Whisper para transcrição`);
+  
+  try {
+    const formData = new FormData();
+    formData.append('file', audioFile);
+    formData.append('model', 'whisper-1');
+    
+    let url = "";
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${provider.apiKey}`,
+    };
+    
+    if (provider.provider === "openai") {
+      url = "https://api.openai.com/v1/audio/transcriptions";
+    } else if (provider.provider === "groq") {
+      url = "https://api.groq.com/openai/v1/audio/transcriptions";
+    }
+    
+    console.log(`[transcribeAudio] Enviando para ${url}...`);
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    
+    console.log(`[transcribeAudio] Status: ${response.status}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[transcribeAudio] Erro ${response.status}:`, errorText);
+      
+      let errorMessage = `Erro ao transcrever com ${provider.provider}`;
+      if (response.status === 401 || response.status === 403) {
+        errorMessage = `❌ API Key inválida para ${provider.provider}`;
+      } else if (response.status === 429) {
+        errorMessage = `⚠️ Limite de requisições excedido. Aguarde e tente novamente.`;
+      } else if (response.status === 413) {
+        errorMessage = `❌ Arquivo muito grande. Tente um arquivo menor (limite: 25MB).`;
+      }
+      
+      return {
+        data: null,
+        error: { message: `${errorMessage}\nDetalhes: ${errorText.substring(0, 200)}` },
+      };
+    }
+    
+    const result = await response.json();
+    console.log(`[transcribeAudio] ✅ Transcrição concluída: ${result.text?.length || 0} caracteres`);
+    
+    return {
+      data: { text: result.text || "" },
+      error: null,
+    };
+    
+  } catch (error) {
+    console.error("[transcribeAudio] Erro crítico:", error);
+    return {
+      data: null,
+      error: { 
+        message: `Erro ao transcrever: ${error instanceof Error ? error.message : "Erro desconhecido"}` 
+      },
+    };
+  }
+};
+
 // Gerar relatório IT - COM ROTEAMENTO INTELIGENTE
 export const generateITReport = async (data: any) => {
   const storageMode = getStorageMode();
