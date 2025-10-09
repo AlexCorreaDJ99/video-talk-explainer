@@ -11,16 +11,20 @@ import { CheckCircle2 } from "lucide-react";
 interface ResolutionFormProps {
   analysisId: string;
   conversationId: string;
+  investigationData?: any;
   onSave: () => void;
 }
 
-export const ResolutionForm = ({ analysisId, conversationId, onSave }: ResolutionFormProps) => {
+export const ResolutionForm = ({ analysisId, conversationId, investigationData, onSave }: ResolutionFormProps) => {
   const { toast } = useToast();
   const [status, setStatus] = useState<string>("pendente");
+  const [minhaInvestigacao, setMinhaInvestigacao] = useState("");
+  const [analiseFinal, setAnaliseFinal] = useState("");
   const [solucao, setSolucao] = useState("");
   const [resposta, setResposta] = useState("");
   const [respostasEnviadas, setRespostasEnviadas] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [gerandoRelatorio, setGerandoRelatorio] = useState(false);
 
   const handleAddResposta = () => {
     if (resposta.trim()) {
@@ -31,6 +35,64 @@ export const ResolutionForm = ({ analysisId, conversationId, onSave }: Resolutio
 
   const handleRemoveResposta = (index: number) => {
     setRespostasEnviadas(respostasEnviadas.filter((_, i) => i !== index));
+  };
+
+  const handleGenerateReport = async () => {
+    if (!minhaInvestigacao.trim() || !analiseFinal.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Campos obrigatórios",
+        description: "Preencha sua investigação e análise final antes de gerar o relatório.",
+      });
+      return;
+    }
+
+    setGerandoRelatorio(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-it-report`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            investigation_data: investigationData,
+            my_investigation: minhaInvestigacao,
+            final_analysis: analiseFinal,
+            solution: solucao,
+            responses_sent: respostasEnviadas,
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error('Erro ao gerar relatório');
+
+      const { report } = await response.json();
+
+      // Baixar relatório
+      const blob = new Blob([report], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `relatorio-ti-${new Date().toISOString()}.txt`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "✅ Relatório gerado!",
+        description: "O relatório foi baixado com sucesso.",
+      });
+    } catch (error) {
+      console.error('Erro ao gerar relatório:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao gerar relatório",
+        description: "Não foi possível gerar o relatório.",
+      });
+    } finally {
+      setGerandoRelatorio(false);
+    }
   };
 
   const handleSave = async () => {
@@ -49,6 +111,8 @@ export const ResolutionForm = ({ analysisId, conversationId, onSave }: Resolutio
         resolucao_status: status,
         solucao_aplicada: solucao.trim() || null,
         respostas_enviadas: respostasEnviadas,
+        minha_investigacao: minhaInvestigacao.trim() || null,
+        analise_final: analiseFinal.trim() || null,
       };
 
       if (status === "resolvido") {
@@ -102,6 +166,30 @@ export const ResolutionForm = ({ analysisId, conversationId, onSave }: Resolutio
               <SelectItem value="nao_resolvido">Não Resolvido</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="investigacao">Minha Investigação</Label>
+          <Textarea
+            id="investigacao"
+            placeholder="Descreva o que você fez para investigar o problema: logs verificados, testes realizados, etc..."
+            value={minhaInvestigacao}
+            onChange={(e) => setMinhaInvestigacao(e.target.value)}
+            rows={4}
+            className="resize-none"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="analise">Análise Final</Label>
+          <Textarea
+            id="analise"
+            placeholder="Sua conclusão sobre o problema: causa raiz identificada, impacto, etc..."
+            value={analiseFinal}
+            onChange={(e) => setAnaliseFinal(e.target.value)}
+            rows={3}
+            className="resize-none"
+          />
         </div>
 
         <div className="space-y-2">
@@ -160,9 +248,21 @@ export const ResolutionForm = ({ analysisId, conversationId, onSave }: Resolutio
           </div>
         )}
 
-        <Button onClick={handleSave} disabled={saving} className="w-full">
-          {saving ? "Salvando..." : "Salvar Resolução"}
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleSave} disabled={saving} className="flex-1">
+            {saving ? "Salvando..." : "Salvar Resolução"}
+          </Button>
+          {investigationData && (
+            <Button
+              onClick={handleGenerateReport}
+              disabled={gerandoRelatorio}
+              variant="secondary"
+              className="flex-1"
+            >
+              {gerandoRelatorio ? "Gerando..." : "Gerar Relatório para TI"}
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
