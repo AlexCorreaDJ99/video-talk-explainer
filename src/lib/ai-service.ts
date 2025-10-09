@@ -5,6 +5,7 @@ import { getStorageMode } from "./storage";
 interface AIConfig {
   provider: "lovable" | "openai" | "groq" | "anthropic" | "google";
   apiKey?: string;
+  model?: string; // Modelo específico do provedor
 }
 
 const AI_CONFIG_KEY = "ai-config";
@@ -157,39 +158,44 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
       case "openai":
         url = "https://api.openai.com/v1/chat/completions";
         headers["Authorization"] = `Bearer ${config.apiKey}`;
+        const openaiModel = config.model || "gpt-4o-mini";
         body = {
-          model: "gpt-4o-mini",
+          model: openaiModel,
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7,
         };
+        console.log("🔧 Usando OpenAI com modelo:", openaiModel);
         break;
 
       case "groq":
         url = "https://api.groq.com/openai/v1/chat/completions";
         headers["Authorization"] = `Bearer ${config.apiKey}`;
+        const groqModel = config.model || "llama-3.3-70b-versatile";
         body = {
-          model: "llama-3.3-70b-versatile", // Modelo atualizado mais recente
+          model: groqModel,
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7,
           max_tokens: 4096,
         };
-        console.log("🔧 Usando Groq com modelo: llama-3.3-70b-versatile");
+        console.log("🔧 Usando Groq com modelo:", groqModel);
         break;
 
       case "anthropic":
         url = "https://api.anthropic.com/v1/messages";
         headers["x-api-key"] = config.apiKey!;
         headers["anthropic-version"] = "2023-06-01";
+        const anthropicModel = config.model || "claude-3-5-sonnet-20241022";
         body = {
-          model: "claude-3-5-sonnet-20241022",
+          model: anthropicModel,
           max_tokens: 4096,
           messages: [{ role: "user", content: prompt }],
         };
-        console.log("🔧 Usando Anthropic com modelo: claude-3-5-sonnet-20241022");
+        console.log("🔧 Usando Anthropic com modelo:", anthropicModel);
         break;
 
       case "google":
-        url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${config.apiKey}`;
+        const googleModel = config.model || "gemini-2.0-flash-exp";
+        url = `https://generativelanguage.googleapis.com/v1beta/models/${googleModel}:generateContent?key=${config.apiKey}`;
         body = {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
@@ -197,7 +203,7 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
             maxOutputTokens: 4096,
           },
         };
-        console.log("🔧 Usando Google Gemini com modelo: gemini-2.0-flash-exp");
+        console.log("🔧 Usando Google Gemini com modelo:", googleModel);
         break;
 
       default:

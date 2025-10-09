@@ -17,11 +17,59 @@ const databases = [
 ];
 
 const aiProviders = [
-  { id: "openai", name: "OpenAI", fields: ["API Key"] },
-  { id: "groq", name: "Groq", fields: ["API Key"] },
-  { id: "anthropic", name: "Anthropic Claude", fields: ["API Key"] },
-  { id: "google", name: "Google AI (Gemini)", fields: ["API Key"] },
-  { id: "lovable", name: "IA Integrada", fields: ["API Key"] },
+  { 
+    id: "openai", 
+    name: "OpenAI", 
+    fields: ["API Key"],
+    models: [
+      { id: "gpt-4o", name: "GPT-4o (Mais capaz, multimodal)" },
+      { id: "gpt-4o-mini", name: "GPT-4o Mini (Rápido e econômico)" },
+      { id: "gpt-4-turbo", name: "GPT-4 Turbo (Balanceado)" },
+      { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo (Mais rápido)" },
+    ]
+  },
+  { 
+    id: "groq", 
+    name: "Groq", 
+    fields: ["API Key"],
+    models: [
+      { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B (Recomendado)" },
+      { id: "llama-3.1-70b-versatile", name: "Llama 3.1 70B" },
+      { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B (Rápido)" },
+      { id: "mixtral-8x7b-32768", name: "Mixtral 8x7B" },
+      { id: "gemma2-9b-it", name: "Gemma 2 9B" },
+    ]
+  },
+  { 
+    id: "anthropic", 
+    name: "Anthropic Claude", 
+    fields: ["API Key"],
+    models: [
+      { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet (Recomendado)" },
+      { id: "claude-3-opus-20240229", name: "Claude 3 Opus (Mais capaz)" },
+      { id: "claude-3-sonnet-20240229", name: "Claude 3 Sonnet" },
+      { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku (Rápido)" },
+    ]
+  },
+  { 
+    id: "google", 
+    name: "Google AI (Gemini)", 
+    fields: ["API Key"],
+    models: [
+      { id: "gemini-2.0-flash-exp", name: "Gemini 2.0 Flash (Recomendado)" },
+      { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro (Mais capaz)" },
+      { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash (Rápido)" },
+      { id: "gemini-1.0-pro", name: "Gemini 1.0 Pro" },
+    ]
+  },
+  { 
+    id: "lovable", 
+    name: "IA Integrada", 
+    fields: ["API Key"],
+    models: [
+      { id: "default", name: "Modelo Padrão" },
+    ]
+  },
 ];
 
 export default function Settings() {
@@ -31,6 +79,7 @@ export default function Settings() {
   const [storageMode, setStorageModeState] = useState<StorageMode>("remote");
   const [selectedDatabase, setSelectedDatabase] = useState<string>("");
   const [selectedAI, setSelectedAI] = useState<string>("");
+  const [selectedModel, setSelectedModel] = useState<string>("");
   const [dbCredentials, setDbCredentials] = useState<Record<string, string>>({});
   const [aiCredentials, setAiCredentials] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -48,6 +97,9 @@ export default function Settings() {
         
         if (config.provider) {
           setSelectedAI(config.provider);
+          if (config.model) {
+            setSelectedModel(config.model);
+          }
           if (config.apiKey) {
             // Mostrar chave mascarada
             setAiCredentials({ "API Key": "••••••••" + config.apiKey.slice(-4) });
@@ -60,6 +112,19 @@ export default function Settings() {
     
     loadAIConfig();
   }, []);
+
+  // Resetar modelo quando trocar de provedor
+  useEffect(() => {
+    if (selectedAI) {
+      const provider = aiProviders.find(p => p.id === selectedAI);
+      if (provider?.models && provider.models.length > 0) {
+        // Se não houver modelo selecionado, usar o primeiro da lista (recomendado)
+        if (!selectedModel) {
+          setSelectedModel(provider.models[0].id);
+        }
+      }
+    }
+  }, [selectedAI]);
 
   const handleStorageModeChange = (mode: StorageMode) => {
     setStorageMode(mode);
@@ -224,6 +289,7 @@ export default function Settings() {
       setAIConfig({
         provider: selectedAI as any,
         apiKey: apiKey,
+        model: selectedModel,
       });
 
       toast({
@@ -629,6 +695,27 @@ export default function Settings() {
                         </div>
                       </div>
                     ))}
+                    
+                    {selectedAiConfig.models && selectedAiConfig.models.length > 0 && (
+                      <div className="space-y-2">
+                        <Label htmlFor="ai-model">Modelo / Versão</Label>
+                        <Select value={selectedModel} onValueChange={setSelectedModel}>
+                          <SelectTrigger id="ai-model">
+                            <SelectValue placeholder="Selecione o modelo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {selectedAiConfig.models.map((model: any) => (
+                              <SelectItem key={model.id} value={model.id}>
+                                {model.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          💡 Escolha a versão mais recente para evitar erros de compatibilidade
+                        </p>
+                      </div>
+                    )}
                     <div className="flex gap-2">
                       <Button onClick={handleTestAI} disabled={testingAI} variant="outline" className="flex-1">
                         {testingAI ? "Testando..." : "Testar Conexão"}
