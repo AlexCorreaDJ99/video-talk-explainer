@@ -254,6 +254,15 @@ export default function Settings() {
     const ai = aiProviders.find(a => a.id === selectedAI);
     if (!ai) return;
 
+    // Lovable AI não pode ser testado localmente
+    if (selectedAI === "lovable") {
+      toast({
+        title: "Informação",
+        description: "IA Integrada funciona apenas quando conectado ao sistema remoto.",
+      });
+      return;
+    }
+
     const missingFields = ai.fields.filter(field => !aiCredentials[field]?.trim());
     if (missingFields.length > 0) {
       toast({
@@ -266,17 +275,111 @@ export default function Settings() {
 
     setTestingAI(true);
     try {
-      // Simular teste de API
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast({
-        title: "✅ API funcionando!",
-        description: `Conexão com ${ai.name} estabelecida com sucesso.`,
+      const apiKey = aiCredentials["API Key"];
+      let url = "";
+      let headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      let body: any = {};
+
+      // Fazer uma chamada de teste simples para cada provedor
+      switch (selectedAI) {
+        case "openai":
+          url = "https://api.openai.com/v1/chat/completions";
+          headers["Authorization"] = `Bearer ${apiKey}`;
+          body = {
+            model: "gpt-4o-mini",
+            messages: [{ role: "user", content: "Responda apenas: OK" }],
+            max_tokens: 10,
+          };
+          break;
+
+        case "groq":
+          url = "https://api.groq.com/openai/v1/chat/completions";
+          headers["Authorization"] = `Bearer ${apiKey}`;
+          body = {
+            model: "llama-3.1-70b-versatile",
+            messages: [{ role: "user", content: "Responda apenas: OK" }],
+            max_tokens: 10,
+          };
+          break;
+
+        case "anthropic":
+          url = "https://api.anthropic.com/v1/messages";
+          headers["x-api-key"] = apiKey;
+          headers["anthropic-version"] = "2023-06-01";
+          body = {
+            model: "claude-3-5-sonnet-20241022",
+            max_tokens: 10,
+            messages: [{ role: "user", content: "Responda apenas: OK" }],
+          };
+          break;
+
+        case "google":
+          url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
+          body = {
+            contents: [{ parts: [{ text: "Responda apenas: OK" }] }],
+          };
+          break;
+
+        default:
+          throw new Error("Provedor não suportado");
+      }
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = "Erro ao conectar com a API.";
+        
+        if (response.status === 401 || response.status === 403) {
+          errorMessage = "API Key inválida ou sem permissão.";
+        } else if (response.status === 429) {
+          errorMessage = "Limite de requisições excedido.";
+        } else if (response.status === 404) {
+          errorMessage = "Endpoint não encontrado. Verifique a configuração.";
+        }
+
+        toast({
+          title: "❌ Falha no teste",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const result = await response.json();
+      
+      // Verificar se a resposta contém dados válidos
+      let hasValidResponse = false;
+      if (selectedAI === "anthropic" && result.content) {
+        hasValidResponse = true;
+      } else if (selectedAI === "google" && result.candidates) {
+        hasValidResponse = true;
+      } else if ((selectedAI === "openai" || selectedAI === "groq") && result.choices) {
+        hasValidResponse = true;
+      }
+
+      if (hasValidResponse) {
+        toast({
+          title: "✅ API funcionando!",
+          description: `Conexão com ${ai.name} estabelecida com sucesso. A IA está respondendo corretamente.`,
+        });
+      } else {
+        toast({
+          title: "⚠️ Resposta inesperada",
+          description: "A API respondeu mas o formato não é o esperado.",
+        });
+      }
     } catch (error) {
+      console.error("Erro ao testar API:", error);
       toast({
         title: "❌ Falha no teste",
-        description: "Não foi possível conectar à API. Verifique a chave API.",
+        description: error instanceof Error ? error.message : "Não foi possível conectar à API. Verifique a chave API e sua conexão com a internet.",
         variant: "destructive",
       });
     } finally {
