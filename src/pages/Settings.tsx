@@ -199,14 +199,36 @@ export default function Settings() {
       
       const apiKey = aiCredentials["API Key"];
       
+      // NÃO salvar se a chave estiver mascarada
+      if (apiKey && apiKey.startsWith("••••")) {
+        toast({
+          title: "⚠️ Chave mascarada",
+          description: "Clique em 'Alterar' e insira a chave completa novamente para atualizar.",
+          variant: "destructive",
+        });
+        setSaving(false);
+        return;
+      }
+      
+      // Validar comprimento mínimo da chave
+      if (apiKey && apiKey.trim().length < 20) {
+        toast({
+          title: "⚠️ API Key inválida",
+          description: "A chave parece muito curta. Verifique se copiou corretamente.",
+          variant: "destructive",
+        });
+        setSaving(false);
+        return;
+      }
+      
       setAIConfig({
         provider: selectedAI as any,
         apiKey: apiKey,
       });
 
       toast({
-        title: "Configuração salva",
-        description: `${ai.name} configurado com sucesso!`,
+        title: "✅ Configuração salva",
+        description: `${ai.name} configurado com sucesso! Você já pode usar a análise.`,
       });
       
       // Manter chave mascarada no campo após salvar
@@ -214,9 +236,10 @@ export default function Settings() {
         setAiCredentials({ "API Key": "••••••••" + apiKey.slice(-4) });
       }
     } catch (error) {
+      console.error("Erro ao salvar config de IA:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível salvar a configuração.",
+        title: "❌ Erro ao salvar",
+        description: error instanceof Error ? error.message : "Não foi possível salvar a configuração.",
         variant: "destructive",
       });
     } finally {

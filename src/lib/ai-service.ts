@@ -125,13 +125,26 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
   const { prompt, config } = params;
 
   if (!config.apiKey && config.provider !== "lovable") {
-    throw new Error(`API Key não configurada para ${config.provider}. Configure em Configurações.`);
+    const erro = `❌ API Key não configurada para ${config.provider}. Configure em Configurações.`;
+    console.error(erro);
+    throw new Error(erro);
+  }
+
+  // Verificar se a chave está mascarada (inválida)
+  if (config.apiKey && config.apiKey.startsWith("••••")) {
+    const erro = `❌ API Key mascarada detectada para ${config.provider}. Clique em "Alterar" e insira a chave completa novamente.`;
+    console.error(erro);
+    throw new Error(erro);
   }
 
   // Validar formato básico da API Key
   if (config.apiKey && config.apiKey.trim().length < 10) {
-    throw new Error(`API Key inválida para ${config.provider}. Verifique a chave em Configurações.`);
+    const erro = `❌ API Key inválida para ${config.provider} (muito curta). Verifique a chave em Configurações.`;
+    console.error(erro);
+    throw new Error(erro);
   }
+
+  console.log(`🔄 Conectando com ${config.provider}...`);
 
   try {
     let url = "";
@@ -155,10 +168,12 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
         url = "https://api.groq.com/openai/v1/chat/completions";
         headers["Authorization"] = `Bearer ${config.apiKey}`;
         body = {
-          model: "llama-3.1-70b-versatile",
+          model: "llama-3.3-70b-versatile", // Modelo atualizado mais recente
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7,
+          max_tokens: 4096,
         };
+        console.log("🔧 Usando Groq com modelo: llama-3.3-70b-versatile");
         break;
 
       case "anthropic":
@@ -170,13 +185,19 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
           max_tokens: 4096,
           messages: [{ role: "user", content: prompt }],
         };
+        console.log("🔧 Usando Anthropic com modelo: claude-3-5-sonnet-20241022");
         break;
 
       case "google":
         url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${config.apiKey}`;
         body = {
           contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 4096,
+          },
         };
+        console.log("🔧 Usando Google Gemini com modelo: gemini-2.0-flash-exp");
         break;
 
       default:
@@ -194,45 +215,108 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`❌ Erro ${response.status} da API ${config.provider}:`, errorText);
       
       let errorMessage = `Erro na API (${response.status})`;
+      let detalhes = "";
       
       if (response.status === 401 || response.status === 403) {
-        errorMessage = `❌ API Key inválida para ${config.provider}. Verifique sua chave em Configurações.`;
+        errorMessage = `❌ API Key inválida ou sem permissão para ${config.provider}`;
+        detalhes = "Verifique se a chave está correta e ativa em Configurações.";
       } else if (response.status === 429) {
-        errorMessage = `⚠️ Limite de requisições excedido para ${config.provider}. Tente novamente mais tarde.`;
+        errorMessage = `⚠️ Limite de requisições excedido para ${config.provider}`;
+        detalhes = "Aguarde alguns minutos ou verifique seu plano de API.";
       } else if (response.status === 402) {
-        errorMessage = `💳 Créditos insuficientes para ${config.provider}. Adicione créditos à sua conta.`;
+        errorMessage = `💳 Créditos/Saldo insuficiente para ${config.provider}`;
+        detalhes = "Adicione créditos à sua conta da API.";
       } else if (response.status === 404) {
-        errorMessage = `❌ Endpoint não encontrado para ${config.provider}. Verifique a configuração.`;
+        errorMessage = `❌ Modelo ou endpoint não encontrado para ${config.provider}`;
+        detalhes = "O modelo pode ter sido descontinuado. Entre em contato com o suporte.";
+      } else if (response.status === 400) {
+        // Tentar extrair erro específico do corpo
+        try {
+          const errorData = JSON.parse(errorText);
+          const specificError = errorData.error?.message || errorData.message || errorText;
+          errorMessage = `❌ Erro de requisição para ${config.provider}`;
+          detalhes = `Detalhes: ${specificError}`;
+        } catch {
+          errorMessage = `❌ Requisição inválida para ${config.provider}`;
+          detalhes = errorText.substring(0, 200);
+        }
       } else {
-        errorMessage = `Erro na API ${config.provider}: ${errorText}`;
+        errorMessage = `❌ Erro ${response.status} na API ${config.provider}`;
+        detalhes = errorText.substring(0, 300);
       }
+      
+      console.error("Mensagem de erro:", errorMessage);
+      console.error("Detalhes:", detalhes);
       
       return {
         data: null,
-        error: { message: errorMessage },
+        error: { message: `${errorMessage}\n${detalhes}` },
       };
     }
 
     const result = await response.json();
+    console.log("✅ Resposta recebida de", config.provider);
 
     // Extrair texto da resposta dependendo do provedor
     let content = "";
-    if (config.provider === "anthropic") {
-      content = result.content[0].text;
-    } else if (config.provider === "google") {
-      content = result.candidates[0].content.parts[0].text;
-    } else {
-      content = result.choices[0].message.content;
+    try {
+      if (config.provider === "anthropic") {
+        if (!result.content || !result.content[0]) {
+          throw new Error("Formato de resposta inesperado da Anthropic");
+        }
+        content = result.content[0].text;
+      } else if (config.provider === "google") {
+        if (!result.candidates || !result.candidates[0]) {
+          // Google às vezes bloqueia por segurança
+          if (result.promptFeedback?.blockReason) {
+            throw new Error(`Resposta bloqueada: ${result.promptFeedback.blockReason}`);
+          }
+          throw new Error("Formato de resposta inesperado do Google");
+        }
+        content = result.candidates[0].content.parts[0].text;
+      } else {
+        // OpenAI e Groq
+        if (!result.choices || !result.choices[0]) {
+          throw new Error(`Formato de resposta inesperado de ${config.provider}`);
+        }
+        content = result.choices[0].message.content;
+      }
+      
+      if (!content) {
+        throw new Error("Resposta vazia da API");
+      }
+      
+      console.log(`✅ Análise concluída com sucesso via ${config.provider}`);
+      return { data: { resultado: content }, error: null };
+      
+    } catch (parseError) {
+      console.error("Erro ao processar resposta:", parseError);
+      console.error("Resposta recebida:", JSON.stringify(result, null, 2));
+      return {
+        data: null,
+        error: { 
+          message: `Erro ao processar resposta de ${config.provider}: ${parseError instanceof Error ? parseError.message : "Formato inválido"}` 
+        },
+      };
     }
-
-    return { data: { resultado: content }, error: null };
   } catch (error) {
-    console.error("Erro ao chamar API externa:", error);
+    console.error("❌ Erro ao chamar API externa:", error);
+    
+    let errorMsg = "Erro desconhecido ao conectar com a API";
+    if (error instanceof Error) {
+      if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+        errorMsg = `❌ Erro de conexão ao tentar acessar ${config.provider}. Verifique sua internet ou se a API está disponível.`;
+      } else {
+        errorMsg = error.message;
+      }
+    }
+    
     return {
       data: null,
-      error: { message: error instanceof Error ? error.message : "Erro desconhecido" },
+      error: { message: errorMsg },
     };
   }
 }
