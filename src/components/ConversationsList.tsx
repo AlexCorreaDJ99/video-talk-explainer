@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageSquare, Search, Plus, BarChart3, Trash2, Edit } from "lucide-react";
+import { MessageSquare, Search, Plus, BarChart3, Trash2, Edit, Settings } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AnalysisBadge } from "@/components/AnalysisBadge";
@@ -163,8 +163,17 @@ export function ConversationsList({
               size="sm" 
               variant="outline"
               onClick={() => navigate("/dashboard")}
+              title="Dashboard"
             >
               <BarChart3 className="w-4 h-4" />
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => navigate("/settings")}
+              title="Configurações"
+            >
+              <Settings className="w-4 h-4" />
             </Button>
             <Button 
               size="sm" 
