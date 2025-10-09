@@ -49,7 +49,6 @@ Status: ${investigation_data?.dados_corrida?.status || 'N/A'}
 Nome: ${investigation_data?.dados_motorista?.nome || 'N/A'}
 ID: ${investigation_data?.dados_motorista?.id || 'N/A'}
 Telefone: ${investigation_data?.dados_motorista?.telefone || 'N/A'}
-Placa do Veículo: ${investigation_data?.dados_motorista?.placa || 'N/A'}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 4. DADOS DO PASSAGEIRO

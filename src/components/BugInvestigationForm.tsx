@@ -20,7 +20,6 @@ export const BugInvestigationForm = ({ analysisId, onDataCollected }: BugInvesti
     nome: "",
     id: "",
     telefone: "",
-    placa: "",
   });
   const [dadosPassageiro, setDadosPassageiro] = useState({
     nome: "",
@@ -207,20 +206,12 @@ export const BugInvestigationForm = ({ analysisId, onDataCollected }: BugInvesti
                 onChange={(e) => setDadosMotorista({...dadosMotorista, id: e.target.value})}
               />
             </div>
-            <div>
+            <div className="col-span-2">
               <Label htmlFor="motorista_tel" className="text-sm">Telefone</Label>
               <Input
                 id="motorista_tel"
                 value={dadosMotorista.telefone}
                 onChange={(e) => setDadosMotorista({...dadosMotorista, telefone: e.target.value})}
-              />
-            </div>
-            <div>
-              <Label htmlFor="motorista_placa" className="text-sm">Placa</Label>
-              <Input
-                id="motorista_placa"
-                value={dadosMotorista.placa}
-                onChange={(e) => setDadosMotorista({...dadosMotorista, placa: e.target.value})}
               />
             </div>
           </div>
