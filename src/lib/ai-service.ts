@@ -125,27 +125,30 @@ Gere um relatório técnico completo para a equipe de TI com:
 async function callExternalAI(params: { prompt: string; config: AIConfig }) {
   const { prompt, config } = params;
 
+  console.log(`[AI Service] Iniciando chamada para ${config.provider}`);
+  console.log(`[AI Service] Modelo selecionado: ${config.model || 'padrão'}`);
+
   if (!config.apiKey && config.provider !== "lovable") {
     const erro = `❌ API Key não configurada para ${config.provider}. Configure em Configurações.`;
-    console.error(erro);
+    console.error("[AI Service]", erro);
     throw new Error(erro);
   }
 
   // Verificar se a chave está mascarada (inválida)
   if (config.apiKey && config.apiKey.startsWith("••••")) {
     const erro = `❌ API Key mascarada detectada para ${config.provider}. Clique em "Alterar" e insira a chave completa novamente.`;
-    console.error(erro);
+    console.error("[AI Service]", erro);
     throw new Error(erro);
   }
 
   // Validar formato básico da API Key
   if (config.apiKey && config.apiKey.trim().length < 10) {
     const erro = `❌ API Key inválida para ${config.provider} (muito curta). Verifique a chave em Configurações.`;
-    console.error(erro);
+    console.error("[AI Service]", erro);
     throw new Error(erro);
   }
 
-  console.log(`🔄 Conectando com ${config.provider}...`);
+  console.log(`[AI Service] ✓ Validação da API Key OK`);
 
   try {
     let url = "";
@@ -153,6 +156,8 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
       "Content-Type": "application/json",
     };
     let body: any = {};
+
+    console.log(`[AI Service] Preparando requisição para ${config.provider}...`);
 
     switch (config.provider) {
       case "openai":
@@ -163,8 +168,9 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
           model: openaiModel,
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7,
+          max_tokens: 4096,
         };
-        console.log("🔧 Usando OpenAI com modelo:", openaiModel);
+        console.log("[AI Service] Usando OpenAI com modelo:", openaiModel);
         break;
 
       case "groq":
@@ -177,7 +183,7 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
           temperature: 0.7,
           max_tokens: 4096,
         };
-        console.log("🔧 Usando Groq com modelo:", groqModel);
+        console.log("[AI Service] Usando Groq com modelo:", groqModel);
         break;
 
       case "anthropic":
@@ -190,7 +196,7 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
           max_tokens: 4096,
           messages: [{ role: "user", content: prompt }],
         };
-        console.log("🔧 Usando Anthropic com modelo:", anthropicModel);
+        console.log("[AI Service] Usando Anthropic com modelo:", anthropicModel);
         break;
 
       case "google":
@@ -203,15 +209,21 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
             maxOutputTokens: 4096,
           },
         };
-        console.log("🔧 Usando Google Gemini com modelo:", googleModel);
+        console.log("[AI Service] Usando Google Gemini com modelo:", googleModel);
         break;
 
       default:
+        const erro = `Provedor de IA não suportado: ${config.provider}`;
+        console.error("[AI Service]", erro);
         return {
           data: null,
-          error: { message: "Provedor de IA não suportado em modo local" },
+          error: { message: erro },
         };
     }
+
+    console.log(`[AI Service] Enviando requisição para ${url}`);
+    console.log(`[AI Service] Headers:`, Object.keys(headers));
+    console.log(`[AI Service] Body keys:`, Object.keys(body));
 
     const response = await fetch(url, {
       method: "POST",
@@ -219,9 +231,11 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
       body: JSON.stringify(body),
     });
 
+    console.log(`[AI Service] Status da resposta: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`❌ Erro ${response.status} da API ${config.provider}:`, errorText);
+      console.error(`[AI Service] ❌ Erro ${response.status} da API ${config.provider}:`, errorText);
       
       let errorMessage = `Erro na API (${response.status})`;
       let detalhes = "";
@@ -254,8 +268,8 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
         detalhes = errorText.substring(0, 300);
       }
       
-      console.error("Mensagem de erro:", errorMessage);
-      console.error("Detalhes:", detalhes);
+      console.error("[AI Service] Mensagem de erro:", errorMessage);
+      console.error("[AI Service] Detalhes:", detalhes);
       
       return {
         data: null,
@@ -264,7 +278,7 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
     }
 
     const result = await response.json();
-    console.log("✅ Resposta recebida de", config.provider);
+    console.log("[AI Service] ✅ Resposta JSON recebida de", config.provider);
 
     // Extrair texto da resposta dependendo do provedor
     let content = "";
@@ -295,12 +309,13 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
         throw new Error("Resposta vazia da API");
       }
       
-      console.log(`✅ Análise concluída com sucesso via ${config.provider}`);
+      console.log(`[AI Service] ✅ Análise concluída com sucesso via ${config.provider}`);
+      console.log(`[AI Service] Conteúdo extraído (${content.length} caracteres)`);
       return { data: { resultado: content }, error: null };
       
     } catch (parseError) {
-      console.error("Erro ao processar resposta:", parseError);
-      console.error("Resposta recebida:", JSON.stringify(result, null, 2));
+      console.error("[AI Service] ❌ Erro ao processar resposta:", parseError);
+      console.error("[AI Service] Resposta recebida:", JSON.stringify(result, null, 2));
       return {
         data: null,
         error: { 
@@ -309,12 +324,23 @@ async function callExternalAI(params: { prompt: string; config: AIConfig }) {
       };
     }
   } catch (error) {
-    console.error("❌ Erro ao chamar API externa:", error);
+    console.error("[AI Service] ❌ Erro crítico ao chamar API externa:", error);
     
     let errorMsg = "Erro desconhecido ao conectar com a API";
     if (error instanceof Error) {
+      console.error("[AI Service] Tipo do erro:", error.name);
+      console.error("[AI Service] Stack trace:", error.stack);
+      
       if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
-        errorMsg = `❌ Erro de conexão ao tentar acessar ${config.provider}. Verifique sua internet ou se a API está disponível.`;
+        errorMsg = `❌ Erro de conexão ao tentar acessar ${config.provider}.\n\n` +
+                   `Verifique:\n` +
+                   `• Conexão com a internet\n` +
+                   `• Se a API está disponível\n` +
+                   `• Firewall ou antivírus não está bloqueando\n` +
+                   `• Se está em modo offline, verifique as configurações de rede`;
+      } else if (error.message.includes("CORS")) {
+        errorMsg = `❌ Erro de CORS ao acessar ${config.provider}.\n\n` +
+                   `Isso pode acontecer no modo desktop. A API está bloqueando a requisição.`;
       } else {
         errorMsg = error.message;
       }

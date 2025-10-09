@@ -203,18 +203,29 @@ const Index = () => {
         newData = await response.json();
       } else {
         // Modo local ou API externa configurada
+        console.log("[Modo Local] Processando com API externa:", aiConfig.provider);
+        console.log("[Modo Local] Modelo:", aiConfig.model || "padrão");
+        
         if (!aiConfig.apiKey && aiConfig.provider !== "lovable") {
-          throw new Error(`Configure a API Key do ${aiConfig.provider} em Configurações antes de continuar.`);
+          throw new Error(`❌ Configure a API Key do ${aiConfig.provider} em Configurações antes de continuar.\n\nPasso a passo:\n1. Clique no botão "Configurações"\n2. Configure o provedor de IA desejado\n3. Insira sua API Key\n4. Selecione o modelo/versão\n5. Salve as configurações`);
         }
 
         // Para modo local, processar com API externa
         const { analyzeVideo } = await import("@/lib/ai-service");
         
+        console.log("[Modo Local] Preparando dados para análise...");
+        
         // Construir transcrição combinada
         if (files.length > 0) {
-          transcricao += '\n\n[Arquivos enviados: ' + files.map(f => f.name).join(', ') + ']';
-          transcricao += '\n\nNOTA: Transcrição de áudio não disponível em modo local. Cole o conteúdo manualmente ou use Lovable AI em modo remoto.';
+          transcricao += '\n\n=== ARQUIVOS ENVIADOS ===\n' + files.map((f, i) => 
+            `${i + 1}. ${f.name} (${f.type}) - ${(f.size / 1024).toFixed(2)} KB`
+          ).join('\n');
+          transcricao += '\n\n⚠️ MODO OFFLINE DETECTADO\n' +
+                        'Transcrição automática de áudio/vídeo não está disponível em modo local.\n' +
+                        'Por favor, cole o conteúdo manualmente ou use "Lovable AI" em modo remoto para análise automática.\n';
         }
+        
+        console.log("[Modo Local] Chamando serviço de análise...");
 
         const result = await analyzeVideo({
           transcricao,
@@ -222,8 +233,11 @@ const Index = () => {
         });
 
         if (result.error) {
+          console.error("[Modo Local] Erro na análise:", result.error);
           throw new Error(result.error.message);
         }
+        
+        console.log("[Modo Local] ✅ Análise concluída com sucesso");
 
         // Parsear resultado da análise
         const analiseTexto = result.data?.resultado || '';
