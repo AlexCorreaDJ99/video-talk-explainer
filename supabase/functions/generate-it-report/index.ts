@@ -114,7 +114,7 @@ ${investigation_data?.evidencias && investigation_data.evidencias.length > 0
       }
     );
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Erro ao gerar relatório:', error);
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     return new Response(
