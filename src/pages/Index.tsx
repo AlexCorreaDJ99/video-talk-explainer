@@ -164,9 +164,13 @@ const Index = () => {
       // Selecionar provedor baseado no tipo de conteúdo (roteamento Multi-AI)
       const contentType = tipo === 'áudio' ? 'audio' : tipo === 'vídeo' ? 'video' : tipo === 'imagem' ? 'imagem' : 'texto';
       const providerForType = getProviderForContent(contentType as any);
+      
+      // Para áudio: se tem Groq/OpenAI configurado, usar modo local para transcrição
+      const hasAudioProvider = providerForType && (providerForType.provider === 'groq' || providerForType.provider === 'openai') && providerForType.apiKey;
+      const forceLocalForAudio = hasAudioProvider && (tipo === 'áudio' || tipo === 'vídeo');
 
-      // Se estiver em modo remoto e o provedor for Lovable AI, usar edge function
-      if (storageMode === "remote" && (providerForType?.provider ?? "lovable") === "lovable") {
+      // Se estiver em modo remoto, provedor for Lovable AI E não for áudio com provedor externo, usar edge function
+      if (storageMode === "remote" && (providerForType?.provider ?? "lovable") === "lovable" && !forceLocalForAudio) {
         const formData = new FormData();
         
         files.forEach((file, index) => {
