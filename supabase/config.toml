@@ -2,3 +2,9 @@ project_id = "esnlohxzxebqpregyaan"
 
 [functions.analyze-video]
 verify_jwt = false
+
+[functions.analyze-evidence]
+verify_jwt = false
+
+[functions.generate-it-report]
+verify_jwt = false

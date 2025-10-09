@@ -12,10 +12,11 @@ interface VideoAnalysisResultsProps {
   analysis: VideoAnalysis;
   analysisId?: string;
   conversationId?: string;
+  investigationData?: any;
   onResolutionSaved?: () => void;
 }
 
-const VideoAnalysisResults = ({ analysis, analysisId, conversationId, onResolutionSaved }: VideoAnalysisResultsProps) => {
+const VideoAnalysisResults = ({ analysis, analysisId, conversationId, investigationData, onResolutionSaved }: VideoAnalysisResultsProps) => {
   const categoria = (analysis.analise as any).categoria || "";
   const problemas = analysis.analise.problemas || [];
 
@@ -164,11 +165,14 @@ const VideoAnalysisResults = ({ analysis, analysisId, conversationId, onResoluti
 
       {/* Resolution Form */}
       {analysisId && conversationId && (
-        <ResolutionForm
-          analysisId={analysisId}
-          conversationId={conversationId}
-          onSave={onResolutionSaved || (() => {})}
-        />
+        <>
+          <ResolutionForm
+            analysisId={analysisId}
+            conversationId={conversationId}
+            investigationData={investigationData}
+            onSave={onResolutionSaved || (() => {})}
+          />
+        </>
       )}
     </div>
   );

@@ -7,6 +7,7 @@ import VideoAnalysisResults from "@/components/VideoAnalysisResults";
 import { ITReportForm } from "@/components/ITReportForm";
 import { ConversationsList } from "@/components/ConversationsList";
 import { NewConversationDialog } from "@/components/NewConversationDialog";
+import { BugInvestigationForm } from "@/components/BugInvestigationForm";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -38,6 +39,7 @@ const Index = () => {
   const [showNewConversationDialog, setShowNewConversationDialog] = useState(false);
   const [conversationsRefresh, setConversationsRefresh] = useState(0);
   const [currentAnalysisId, setCurrentAnalysisId] = useState<string | null>(null);
+  const [investigationData, setInvestigationData] = useState<any>(null);
   const { toast } = useToast();
 
   // Carregar conversa selecionada
@@ -348,6 +350,7 @@ const Index = () => {
                   analysis={analysis}
                   analysisId={currentAnalysisId || undefined}
                   conversationId={selectedConversationId || undefined}
+                  investigationData={investigationData}
                   onResolutionSaved={() => {
                     toast({
                       title: "Sucesso!",
@@ -355,6 +358,14 @@ const Index = () => {
                     });
                   }}
                 />
+
+                {/* Formulário de Coleta de Dados para Investigação */}
+                {currentAnalysisId && (
+                  <BugInvestigationForm
+                    analysisId={currentAnalysisId}
+                    onDataCollected={setInvestigationData}
+                  />
+                )}
               </div>
             )}
 

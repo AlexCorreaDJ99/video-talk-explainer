@@ -17,9 +17,12 @@ export type Database = {
       analyses: {
         Row: {
           analise_data: Json | null
+          analise_final: string | null
           conversation_id: string
           created_at: string | null
+          dados_investigacao: Json | null
           id: string
+          minha_investigacao: string | null
           resolucao_status: string | null
           resolvido_em: string | null
           respostas_enviadas: Json | null
@@ -29,9 +32,12 @@ export type Database = {
         }
         Insert: {
           analise_data?: Json | null
+          analise_final?: string | null
           conversation_id: string
           created_at?: string | null
+          dados_investigacao?: Json | null
           id?: string
+          minha_investigacao?: string | null
           resolucao_status?: string | null
           resolvido_em?: string | null
           respostas_enviadas?: Json | null
@@ -41,9 +47,12 @@ export type Database = {
         }
         Update: {
           analise_data?: Json | null
+          analise_final?: string | null
           conversation_id?: string
           created_at?: string | null
+          dados_investigacao?: Json | null
           id?: string
+          minha_investigacao?: string | null
           resolucao_status?: string | null
           resolvido_em?: string | null
           respostas_enviadas?: Json | null
