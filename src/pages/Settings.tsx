@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArrowLeft, Database, Brain } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, Database, Brain, HardDrive, Download, Upload, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getStorageMode, setStorageMode, dataBackup, type StorageMode } from "@/lib/storage";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const databases = [
   { id: "supabase", name: "Supabase", fields: ["URL", "Anon Key"] },
@@ -26,6 +28,7 @@ export default function Settings() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
+  const [storageMode, setStorageModeState] = useState<StorageMode>("remote");
   const [selectedDatabase, setSelectedDatabase] = useState<string>("");
   const [selectedAI, setSelectedAI] = useState<string>("");
   const [dbCredentials, setDbCredentials] = useState<Record<string, string>>({});
@@ -33,6 +36,74 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [testingDb, setTestingDb] = useState(false);
   const [testingAI, setTestingAI] = useState(false);
+
+  useEffect(() => {
+    setStorageModeState(getStorageMode());
+  }, []);
+
+  const handleStorageModeChange = (mode: StorageMode) => {
+    setStorageMode(mode);
+    setStorageModeState(mode);
+    toast({
+      title: "Modo de armazenamento alterado",
+      description: mode === "local" 
+        ? "Os dados serão armazenados localmente no navegador"
+        : "Os dados serão armazenados no banco de dados remoto",
+    });
+  };
+
+  const handleExportData = () => {
+    try {
+      dataBackup.export();
+      toast({
+        title: "Dados exportados!",
+        description: "Backup dos dados locais baixado com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao exportar",
+        description: "Não foi possível exportar os dados.",
+      });
+    }
+  };
+
+  const handleImportData = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.onchange = async (e: any) => {
+      const file = e.target?.files?.[0];
+      if (!file) return;
+
+      try {
+        await dataBackup.import(file);
+        toast({
+          title: "Dados importados!",
+          description: "Backup restaurado com sucesso.",
+        });
+        window.location.reload();
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Erro ao importar",
+          description: "Arquivo inválido ou corrompido.",
+        });
+      }
+    };
+    input.click();
+  };
+
+  const handleClearLocalData = () => {
+    if (confirm("Tem certeza que deseja apagar todos os dados locais? Esta ação não pode ser desfeita.")) {
+      dataBackup.clear();
+      toast({
+        title: "Dados apagados",
+        description: "Todos os dados locais foram removidos.",
+      });
+      window.location.reload();
+    }
+  };
 
   const handleSaveDatabase = async () => {
     if (!selectedDatabase) {
@@ -214,9 +285,70 @@ export default function Settings() {
           </Button>
           <div>
             <h1 className="text-4xl font-bold">Configurações</h1>
-            <p className="text-muted-foreground">Configure o banco de dados e o cérebro da IA</p>
+            <p className="text-muted-foreground">Configure o armazenamento, banco de dados e IA</p>
           </div>
         </div>
+
+        {/* Modo de Armazenamento */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <HardDrive className="w-5 h-5" />
+              Modo de Armazenamento
+            </CardTitle>
+            <CardDescription>
+              Escolha onde seus dados serão armazenados
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <RadioGroup value={storageMode} onValueChange={(value) => handleStorageModeChange(value as StorageMode)}>
+              <div className="flex items-start space-x-3 p-4 border rounded-lg">
+                <RadioGroupItem value="remote" id="remote" />
+                <div className="flex-1">
+                  <Label htmlFor="remote" className="font-semibold cursor-pointer">
+                    Banco de Dados Remoto (Nuvem)
+                  </Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Dados sincronizados na nuvem, acessíveis de qualquer dispositivo
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start space-x-3 p-4 border rounded-lg">
+                <RadioGroupItem value="local" id="local" />
+                <div className="flex-1">
+                  <Label htmlFor="local" className="font-semibold cursor-pointer">
+                    Armazenamento Local (Navegador)
+                  </Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Dados salvos apenas neste navegador, 100% offline
+                  </p>
+                </div>
+              </div>
+            </RadioGroup>
+
+            {storageMode === "local" && (
+              <div className="space-y-3 pt-4 border-t">
+                <p className="text-sm text-muted-foreground">
+                  <strong>Gerenciar Dados Locais:</strong>
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <Button onClick={handleExportData} variant="outline" className="gap-2">
+                    <Download className="w-4 h-4" />
+                    Exportar Backup
+                  </Button>
+                  <Button onClick={handleImportData} variant="outline" className="gap-2">
+                    <Upload className="w-4 h-4" />
+                    Importar Backup
+                  </Button>
+                  <Button onClick={handleClearLocalData} variant="destructive" className="gap-2">
+                    <Trash className="w-4 h-4" />
+                    Limpar Dados
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
