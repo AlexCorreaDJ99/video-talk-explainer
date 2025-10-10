@@ -166,8 +166,19 @@ const Index = () => {
       const providerForType = getProviderForContent(contentType as any);
       
       // Para áudio: verificar se tem Groq/OpenAI configurado para transcrição
+      const mediaFiles = files.filter(f => f.type.startsWith('video/') || f.type.startsWith('audio/'));
+      const needsTranscription = mediaFiles.length > 0;
       const hasAudioProvider = providerForType && (providerForType.provider === 'groq' || providerForType.provider === 'openai') && providerForType.apiKey;
-      const needsTranscription = (tipo === 'áudio' || tipo === 'vídeo') && files.some(f => f.type.startsWith('video/') || f.type.startsWith('audio/'));
+      
+      // Se precisa transcrever mas não tem provedor configurado, avisar
+      if (needsTranscription && !hasAudioProvider && !pastedText) {
+        toast({
+          variant: "destructive",
+          title: "⚠️ Transcrição não disponível",
+          description: "Configure Groq ou OpenAI em Configurações para transcrever áudio/vídeo automaticamente, ou cole o texto manualmente.",
+          duration: 6000,
+        });
+      }
 
       // MODO REMOTO (Vercel, produção)
       if (storageMode === "remote") {
@@ -175,13 +186,12 @@ const Index = () => {
         if (needsTranscription && hasAudioProvider) {
           console.log(`[Remoto] Usando ${providerForType.provider} Whisper via edge function`);
           
-          const mediaFiles = files.filter(f => f.type.startsWith('video/') || f.type.startsWith('audio/'));
           const transcricoes: string[] = [];
           
           for (const mediaFile of mediaFiles) {
             toast({
               title: "Transcrevendo...",
-              description: `Processando ${mediaFile.name}`,
+              description: `Processando ${mediaFile.name} com ${providerForType.provider.toUpperCase()}`,
             });
             
             const transcribeFormData = new FormData();
@@ -210,7 +220,7 @@ const Index = () => {
           
           toast({
             title: "✓ Transcrição Concluída",
-            description: `${mediaFiles.length} arquivo(s) transcritos`,
+            description: `${mediaFiles.length} arquivo(s) transcritos com sucesso`,
           });
         }
         
