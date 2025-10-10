@@ -165,12 +165,56 @@ const Index = () => {
       const contentType = tipo === 'áudio' ? 'audio' : tipo === 'vídeo' ? 'video' : tipo === 'imagem' ? 'imagem' : 'texto';
       const providerForType = getProviderForContent(contentType as any);
       
-      // Para áudio: se tem Groq/OpenAI configurado, usar modo local para transcrição
+      // Para áudio: verificar se tem Groq/OpenAI configurado para transcrição
       const hasAudioProvider = providerForType && (providerForType.provider === 'groq' || providerForType.provider === 'openai') && providerForType.apiKey;
-      const forceLocalForAudio = hasAudioProvider && (tipo === 'áudio' || tipo === 'vídeo');
+      const needsTranscription = (tipo === 'áudio' || tipo === 'vídeo') && files.some(f => f.type.startsWith('video/') || f.type.startsWith('audio/'));
 
-      // Se estiver em modo remoto, provedor for Lovable AI E não for áudio com provedor externo, usar edge function
-      if (storageMode === "remote" && (providerForType?.provider ?? "lovable") === "lovable" && !forceLocalForAudio) {
+      // MODO REMOTO (Vercel, produção)
+      if (storageMode === "remote") {
+        // Se precisa transcrever E tem Groq/OpenAI configurado, usar edge function de transcrição
+        if (needsTranscription && hasAudioProvider) {
+          console.log(`[Remoto] Usando ${providerForType.provider} Whisper via edge function`);
+          
+          const mediaFiles = files.filter(f => f.type.startsWith('video/') || f.type.startsWith('audio/'));
+          const transcricoes: string[] = [];
+          
+          for (const mediaFile of mediaFiles) {
+            toast({
+              title: "Transcrevendo...",
+              description: `Processando ${mediaFile.name}`,
+            });
+            
+            const transcribeFormData = new FormData();
+            transcribeFormData.append('file', mediaFile);
+            transcribeFormData.append('provider', providerForType.provider);
+            transcribeFormData.append('apiKey', providerForType.apiKey!);
+            
+            const transcribeResponse = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-audio`,
+              {
+                method: 'POST',
+                body: transcribeFormData,
+              }
+            );
+            
+            if (!transcribeResponse.ok) {
+              const errorData = await transcribeResponse.json();
+              throw new Error(errorData.error || 'Erro ao transcrever áudio');
+            }
+            
+            const transcribeResult = await transcribeResponse.json();
+            transcricoes.push(`\n\n=== TRANSCRIÇÃO: ${mediaFile.name} ===\n${transcribeResult.text}`);
+          }
+          
+          transcricao += transcricoes.join('\n');
+          
+          toast({
+            title: "✓ Transcrição Concluída",
+            description: `${mediaFiles.length} arquivo(s) transcritos`,
+          });
+        }
+        
+        // Agora analisar com Lovable AI (sempre usa Lovable AI para análise em modo remoto)
         const formData = new FormData();
         
         files.forEach((file, index) => {
@@ -181,8 +225,9 @@ const Index = () => {
           }
         });
 
-        if (pastedText) {
-          formData.append('pasted_text', pastedText);
+        // Se já temos transcrição, passar como texto colado
+        if (transcricao || pastedText) {
+          formData.append('pasted_text', (transcricao || '') + (pastedText || ''));
         }
 
         const response = await fetch(
@@ -210,6 +255,7 @@ const Index = () => {
 
         newData = await response.json();
       } else {
+        // MODO LOCAL (desenvolvimento)
         // Modo local ou API externa configurada
         console.log("[Modo Local] Processando com provedor:", providerForType?.provider);
         console.log("[Modo Local] Modelo:", providerForType?.model || "padrão");
