@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -103,6 +104,9 @@ export function EditClassificationDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Editar Classificação</DialogTitle>
+          <DialogDescription>
+            Ajuste a urgência, sentimento e categoria desta análise.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">

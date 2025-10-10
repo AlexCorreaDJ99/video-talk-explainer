@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -64,6 +65,9 @@ export const AddAcessoDialog = ({ open, onOpenChange }: AddAcessoDialogProps) =>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Adicionar Novo Acesso</DialogTitle>
+          <DialogDescription>
+            Cadastre um novo acesso de cliente com login e senha.
+          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">

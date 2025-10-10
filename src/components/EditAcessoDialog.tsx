@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -84,6 +85,9 @@ export const EditAcessoDialog = ({ acesso, open, onOpenChange }: EditAcessoDialo
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Editar Acesso</DialogTitle>
+          <DialogDescription>
+            Atualize as informações de acesso do cliente.
+          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
