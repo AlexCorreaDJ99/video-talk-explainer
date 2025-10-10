@@ -162,7 +162,8 @@ const Index = () => {
       let newData;
 
       // Selecionar provedor baseado no tipo de conteúdo (roteamento Multi-AI)
-      const contentType = tipo === 'áudio' ? 'audio' : tipo === 'vídeo' ? 'video' : tipo === 'imagem' ? 'imagem' : 'texto';
+      // Vídeos usam o mesmo provider de áudio para transcrição (Whisper)
+      const contentType = (tipo === 'áudio' || tipo === 'vídeo') ? 'audio' : tipo === 'imagem' ? 'imagem' : 'texto';
       const providerForType = getProviderForContent(contentType as any);
       
       // Para áudio: verificar se tem Groq/OpenAI configurado para transcrição
