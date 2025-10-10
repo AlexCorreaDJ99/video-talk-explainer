@@ -65,6 +65,8 @@ serve(async (req) => {
         throw new Error('Limite de requisições excedido. Aguarde e tente novamente.');
       } else if (response.status === 413) {
         throw new Error('Arquivo muito grande. Limite: 25MB');
+      } else if (errorText.includes('no audio track found')) {
+        throw new Error('VIDEO_SEM_AUDIO');
       }
       
       throw new Error(`Erro ao transcrever: ${errorText}`);

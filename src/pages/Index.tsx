@@ -200,21 +200,40 @@ const Index = () => {
             transcribeFormData.append('provider', providerForType.provider);
             transcribeFormData.append('apiKey', providerForType.apiKey!);
             
-            const transcribeResponse = await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-audio`,
-              {
-                method: 'POST',
-                body: transcribeFormData,
+            try {
+              const transcribeResponse = await fetch(
+                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-audio`,
+                {
+                  method: 'POST',
+                  body: transcribeFormData,
+                }
+              );
+              
+              if (!transcribeResponse.ok) {
+                const errorData = await transcribeResponse.json();
+                if (errorData.error === 'VIDEO_SEM_AUDIO') {
+                  // Vídeo sem áudio, continuar sem transcrição
+                  toast({
+                    variant: "destructive",
+                    title: "⚠️ Vídeo sem áudio",
+                    description: `${mediaFile.name} não contém áudio. Cole o texto manualmente se necessário.`,
+                    duration: 5000,
+                  });
+                  transcricoes.push(`\n\n[Vídeo: ${mediaFile.name}] - Arquivo sem áudio. Cole o conteúdo manualmente se necessário.`);
+                  continue;
+                }
+                throw new Error(errorData.error || 'Erro ao transcrever áudio');
               }
-            );
-            
-            if (!transcribeResponse.ok) {
-              const errorData = await transcribeResponse.json();
-              throw new Error(errorData.error || 'Erro ao transcrever áudio');
+              
+              const transcribeResult = await transcribeResponse.json();
+              transcricoes.push(`\n\n=== TRANSCRIÇÃO: ${mediaFile.name} ===\n${transcribeResult.text}`);
+            } catch (error: any) {
+              if (error.message === 'VIDEO_SEM_AUDIO') {
+                transcricoes.push(`\n\n[Vídeo: ${mediaFile.name}] - Arquivo sem áudio. Cole o conteúdo manualmente se necessário.`);
+                continue;
+              }
+              throw error;
             }
-            
-            const transcribeResult = await transcribeResponse.json();
-            transcricoes.push(`\n\n=== TRANSCRIÇÃO: ${mediaFile.name} ===\n${transcribeResult.text}`);
           }
           
           transcricao += transcricoes.join('\n');
