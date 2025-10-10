@@ -4,9 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Sparkles } from "lucide-react";
 
 interface ResolutionFormProps {
   analysisId: string;
@@ -25,6 +26,8 @@ export const ResolutionForm = ({ analysisId, conversationId, investigationData, 
   const [respostasEnviadas, setRespostasEnviadas] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [gerandoRelatorio, setGerandoRelatorio] = useState(false);
+  const [melhorarComIA, setMelhorarComIA] = useState(false);
+  const [melhorando, setMelhorando] = useState<string | null>(null);
 
   const handleAddResposta = () => {
     if (resposta.trim()) {
@@ -35,6 +38,50 @@ export const ResolutionForm = ({ analysisId, conversationId, investigationData, 
 
   const handleRemoveResposta = (index: number) => {
     setRespostasEnviadas(respostasEnviadas.filter((_, i) => i !== index));
+  };
+
+  const handleImproveText = async (text: string, type: string, setter: (text: string) => void) => {
+    if (!text.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Escreva algum texto antes de melhorar.",
+      });
+      return;
+    }
+
+    setMelhorando(type);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/improve-text`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text, type }),
+        }
+      );
+
+      if (!response.ok) throw new Error('Erro ao melhorar texto');
+
+      const { improvedText } = await response.json();
+      setter(improvedText);
+
+      toast({
+        title: "✨ Texto melhorado!",
+        description: "O texto foi corrigido e aprimorado com IA.",
+      });
+    } catch (error) {
+      console.error('Erro ao melhorar texto:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível melhorar o texto.",
+      });
+    } finally {
+      setMelhorando(null);
+    }
   };
 
   const handleGenerateReport = async () => {
@@ -153,6 +200,23 @@ export const ResolutionForm = ({ analysisId, conversationId, investigationData, 
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="flex items-center space-x-2 p-3 bg-accent/10 rounded-lg">
+          <Checkbox
+            id="melhorar-ia"
+            checked={melhorarComIA}
+            onCheckedChange={(checked) => setMelhorarComIA(checked as boolean)}
+          />
+          <div className="flex-1">
+            <Label htmlFor="melhorar-ia" className="cursor-pointer flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              Melhorar textos com IA
+            </Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              Corrige ortografia e melhora clareza dos textos antes de salvar
+            </p>
+          </div>
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="status">Status da Resolução</Label>
           <Select value={status} onValueChange={setStatus}>
@@ -169,7 +233,21 @@ export const ResolutionForm = ({ analysisId, conversationId, investigationData, 
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="investigacao">Minha Investigação</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="investigacao">Minha Investigação</Label>
+            {melhorarComIA && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => handleImproveText(minhaInvestigacao, 'investigation', setMinhaInvestigacao)}
+                disabled={melhorando === 'investigation' || !minhaInvestigacao.trim()}
+              >
+                <Sparkles className="w-4 h-4 mr-1" />
+                {melhorando === 'investigation' ? 'Melhorando...' : 'Melhorar com IA'}
+              </Button>
+            )}
+          </div>
           <Textarea
             id="investigacao"
             placeholder="Descreva o que você fez para investigar o problema: logs verificados, testes realizados, etc..."
@@ -181,7 +259,21 @@ export const ResolutionForm = ({ analysisId, conversationId, investigationData, 
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="analise">Análise Final</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="analise">Análise Final</Label>
+            {melhorarComIA && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => handleImproveText(analiseFinal, 'analysis', setAnaliseFinal)}
+                disabled={melhorando === 'analysis' || !analiseFinal.trim()}
+              >
+                <Sparkles className="w-4 h-4 mr-1" />
+                {melhorando === 'analysis' ? 'Melhorando...' : 'Melhorar com IA'}
+              </Button>
+            )}
+          </div>
           <Textarea
             id="analise"
             placeholder="Sua conclusão sobre o problema: causa raiz identificada, impacto, etc..."
@@ -193,7 +285,21 @@ export const ResolutionForm = ({ analysisId, conversationId, investigationData, 
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="solucao">Como foi resolvido?</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="solucao">Como foi resolvido?</Label>
+            {melhorarComIA && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => handleImproveText(solucao, 'solution', setSolucao)}
+                disabled={melhorando === 'solution' || !solucao.trim()}
+              >
+                <Sparkles className="w-4 h-4 mr-1" />
+                {melhorando === 'solution' ? 'Melhorando...' : 'Melhorar com IA'}
+              </Button>
+            )}
+          </div>
           <Textarea
             id="solucao"
             placeholder="Descreva detalhadamente a solução aplicada para este problema..."
@@ -205,7 +311,21 @@ export const ResolutionForm = ({ analysisId, conversationId, investigationData, 
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="resposta">Respostas enviadas ao cliente</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="resposta">Respostas enviadas ao cliente</Label>
+            {melhorarComIA && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => handleImproveText(resposta, 'response', setResposta)}
+                disabled={melhorando === 'response' || !resposta.trim()}
+              >
+                <Sparkles className="w-4 h-4 mr-1" />
+                {melhorando === 'response' ? 'Melhorando...' : 'Melhorar com IA'}
+              </Button>
+            )}
+          </div>
           <div className="flex gap-2">
             <Textarea
               id="resposta"
