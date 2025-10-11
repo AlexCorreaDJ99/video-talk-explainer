@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Database, HardDrive, Download, Upload, Trash } from "lucide-react";
+import { ArrowLeft, Database, HardDrive, Download, Upload, Trash, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getStorageMode, setStorageMode, dataBackup, type StorageMode } from "@/lib/storage";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import MultiAIConfig from "@/components/MultiAIConfig";
+import DatabaseManager from "@/components/DatabaseManager";
+import { supabase } from "@/integrations/supabase/client";
 
 const databases = [
   { id: "supabase", name: "Supabase", fields: ["URL", "Anon Key"] },
@@ -181,17 +183,40 @@ export default function Settings() {
 
   const selectedDbConfig = databases.find(db => db.id === selectedDatabase);
 
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao sair",
+        description: error.message,
+      });
+    } else {
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso.",
+      });
+      navigate("/auth");
+    }
+  };
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-background via-background to-accent/5">
       <div className="container mx-auto px-4 py-8 space-y-8 max-w-4xl">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={() => navigate("/")}>
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-          <div>
-            <h1 className="text-4xl font-bold">Configurações</h1>
-            <p className="text-muted-foreground">Configure o armazenamento, banco de dados e IA</p>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" onClick={() => navigate("/")}>
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div>
+              <h1 className="text-4xl font-bold">Configurações</h1>
+              <p className="text-muted-foreground">Configure o armazenamento, banco de dados e IA</p>
+            </div>
           </div>
+          <Button variant="outline" onClick={handleLogout} className="gap-2">
+            <LogOut className="w-4 h-4" />
+            Sair
+          </Button>
         </div>
 
         {/* Modo de Armazenamento */}
@@ -312,6 +337,9 @@ export default function Settings() {
 
         {/* Configuração de Múltiplas IAs */}
         <MultiAIConfig />
+
+        {/* Gerenciamento de Banco de Dados */}
+        <DatabaseManager />
       </div>
     </main>
   );

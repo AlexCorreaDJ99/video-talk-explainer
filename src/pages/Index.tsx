@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, Upload, AlertCircle, FileText } from "lucide-react";
+import { Loader2, Upload, AlertCircle, FileText, LogOut, Settings as SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import VideoUpload from "@/components/VideoUpload";
@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getProviderForContent } from "@/lib/ai-config";
 import { convertToWavIfNeeded } from "@/lib/audio";
+import { useNavigate } from "react-router-dom";
 
 export interface VideoAnalysis {
   transcricao: string;
@@ -32,6 +33,7 @@ export interface VideoAnalysis {
 }
 
 const Index = () => {
+  const navigate = useNavigate();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<VideoAnalysis | null>(null);
   const [showReport, setShowReport] = useState(false);
@@ -43,6 +45,19 @@ const Index = () => {
   const [currentAnalysisId, setCurrentAnalysisId] = useState<string | null>(null);
   const [investigationData, setInvestigationData] = useState<any>(null);
   const { toast } = useToast();
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao sair",
+        description: error.message,
+      });
+    } else {
+      navigate("/auth");
+    }
+  };
 
   // Carregar conversa selecionada
   useEffect(() => {
@@ -104,9 +119,23 @@ const Index = () => {
 
   const handleCreateConversation = async (cliente: string, atendente: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Você precisa estar logado para criar uma conversa.",
+        });
+        return;
+      }
+
       const { data, error } = await supabase
         .from("conversations")
-        .insert({ cliente, atendente })
+        .insert({ 
+          cliente, 
+          atendente,
+          user_id: user.id
+        })
         .select()
         .single();
 
@@ -438,6 +467,7 @@ const Index = () => {
             transcricao: combinedAnalysis.transcricao,
             analise_data: combinedAnalysis.analise,
             resolucao_status: 'pendente',
+            user_id: (await supabase.auth.getUser()).data.user?.id,
           })
           .select()
           .single();
@@ -453,6 +483,7 @@ const Index = () => {
             transcricao: newData.transcricao,
             analise_data: newData.analise,
             resolucao_status: 'pendente',
+            user_id: (await supabase.auth.getUser()).data.user?.id,
           })
           .select()
           .single();
@@ -500,6 +531,16 @@ const Index = () => {
         <div className="flex-1 overflow-auto">
           <div className="container mx-auto px-4 py-12 space-y-12">
             <header className="text-center space-y-4 max-w-3xl mx-auto">
+              <div className="flex items-center justify-end gap-2 mb-4">
+                <Button variant="outline" onClick={() => navigate("/settings")} size="sm" className="gap-2">
+                  <SettingsIcon className="w-4 h-4" />
+                  Configurações
+                </Button>
+                <Button variant="outline" onClick={handleLogout} size="sm" className="gap-2">
+                  <LogOut className="w-4 h-4" />
+                  Sair
+                </Button>
+              </div>
               <h1 className="text-5xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-gradient">
                 Análise Inteligente de Mídia
               </h1>
