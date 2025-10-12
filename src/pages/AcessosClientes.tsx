@@ -3,12 +3,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, ArrowLeft } from "lucide-react";
+import { Search, Plus, ArrowLeft, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { AcessosTable } from "@/components/AcessosTable";
 import { AddAcessoDialog } from "@/components/AddAcessoDialog";
 import { EditAcessoDialog } from "@/components/EditAcessoDialog";
+import { ImportAcessosDialog } from "@/components/ImportAcessosDialog";
 
 interface AcessoCliente {
   id: string;
@@ -23,6 +24,7 @@ interface AcessoCliente {
 const AcessosClientes = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editingAcesso, setEditingAcesso] = useState<AcessoCliente | null>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -100,10 +102,16 @@ const AcessosClientes = () => {
               </p>
             </div>
             
-            <Button onClick={() => setIsAddDialogOpen(true)} size="lg">
-              <Plus className="mr-2 h-4 w-4" />
-              Adicionar Acesso
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setIsImportDialogOpen(true)} size="lg" variant="outline">
+                <Upload className="mr-2 h-4 w-4" />
+                Importar Arquivo
+              </Button>
+              <Button onClick={() => setIsAddDialogOpen(true)} size="lg">
+                <Plus className="mr-2 h-4 w-4" />
+                Adicionar Acesso
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -133,6 +141,11 @@ const AcessosClientes = () => {
         <AddAcessoDialog
           open={isAddDialogOpen}
           onOpenChange={setIsAddDialogOpen}
+        />
+
+        <ImportAcessosDialog
+          open={isImportDialogOpen}
+          onOpenChange={setIsImportDialogOpen}
         />
 
         {editingAcesso && (
