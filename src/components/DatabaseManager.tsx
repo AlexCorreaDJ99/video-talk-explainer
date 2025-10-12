@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Trash2, Database, AlertTriangle } from "lucide-react";
+import { Trash2, Database, AlertTriangle, UserCog, Shield } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +33,8 @@ const DatabaseManager = () => {
   const [conversations, setConversations] = useState<any[]>([]);
   const [analyses, setAnalyses] = useState<any[]>([]);
   const [evidences, setEvidences] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [newAdminEmail, setNewAdminEmail] = useState("");
 
   useEffect(() => {
     checkAdminRole();
@@ -57,15 +61,23 @@ const DatabaseManager = () => {
   };
 
   const loadAllData = async () => {
-    const [convResponse, analResponse, evidResponse] = await Promise.all([
+    const [convResponse, analResponse, evidResponse, profilesResponse] = await Promise.all([
       supabase.from("conversations").select("*").order("created_at", { ascending: false }),
       supabase.from("analyses").select("*").order("created_at", { ascending: false }),
-      supabase.from("evidences").select("*").order("created_at", { ascending: false })
+      supabase.from("evidences").select("*").order("created_at", { ascending: false }),
+      supabase.from("profiles").select(`
+        id,
+        email,
+        nome_completo,
+        created_at,
+        user_roles (role)
+      `).order("created_at", { ascending: false })
     ]);
 
     if (convResponse.data) setConversations(convResponse.data);
     if (analResponse.data) setAnalyses(analResponse.data);
     if (evidResponse.data) setEvidences(evidResponse.data);
+    if (profilesResponse.data) setUsers(profilesResponse.data);
   };
 
   const deleteConversation = async (id: string) => {
@@ -94,6 +106,66 @@ const DatabaseManager = () => {
       toast.error("Erro ao deletar evidência");
     } else {
       toast.success("Evidência deletada");
+      loadAllData();
+    }
+  };
+
+  const promoteToAdmin = async (email: string) => {
+    if (!email) {
+      toast.error("Digite um email");
+      return;
+    }
+
+    // Buscar usuário pelo email
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", email.toLowerCase().trim())
+      .maybeSingle();
+
+    if (profileError || !profile) {
+      toast.error("Usuário não encontrado");
+      return;
+    }
+
+    // Verificar se já é admin
+    const { data: existingRole } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", profile.id)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    if (existingRole) {
+      toast.info("Usuário já é administrador");
+      return;
+    }
+
+    // Adicionar role de admin
+    const { error } = await supabase
+      .from("user_roles")
+      .insert({ user_id: profile.id, role: "admin" });
+
+    if (error) {
+      toast.error("Erro ao promover usuário");
+    } else {
+      toast.success("Usuário promovido a administrador!");
+      setNewAdminEmail("");
+      loadAllData();
+    }
+  };
+
+  const removeAdmin = async (userId: string) => {
+    const { error } = await supabase
+      .from("user_roles")
+      .delete()
+      .eq("user_id", userId)
+      .eq("role", "admin");
+
+    if (error) {
+      toast.error("Erro ao remover privilégios de admin");
+    } else {
+      toast.success("Privilégios de admin removidos");
       loadAllData();
     }
   };
@@ -154,13 +226,112 @@ const DatabaseManager = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="conversations" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs defaultValue="users" className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="users">Usuários ({users.length})</TabsTrigger>
             <TabsTrigger value="conversations">Conversas ({conversations.length})</TabsTrigger>
             <TabsTrigger value="analyses">Análises ({analyses.length})</TabsTrigger>
             <TabsTrigger value="evidences">Evidências ({evidences.length})</TabsTrigger>
             <TabsTrigger value="actions">Ações</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="users" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserCog className="h-5 w-5" />
+                  Promover Usuário a Administrador
+                </CardTitle>
+                <CardDescription>
+                  Digite o email do usuário para dar privilégios de administrador
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Label htmlFor="admin-email">Email do Usuário</Label>
+                    <Input
+                      id="admin-email"
+                      type="email"
+                      placeholder="usuario@email.com"
+                      value={newAdminEmail}
+                      onChange={(e) => setNewAdminEmail(e.target.value)}
+                    />
+                  </div>
+                  <Button 
+                    onClick={() => promoteToAdmin(newAdminEmail)}
+                    className="self-end"
+                  >
+                    <Shield className="mr-2 h-4 w-4" />
+                    Promover
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Criado em</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((user) => {
+                    const isUserAdmin = user.user_roles?.some((r: any) => r.role === 'admin');
+                    return (
+                      <TableRow key={user.id}>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>{user.nome_completo || "N/A"}</TableCell>
+                        <TableCell>
+                          {isUserAdmin ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                              <Shield className="h-3 w-3" />
+                              Admin
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                              Usuário
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>{new Date(user.created_at).toLocaleString()}</TableCell>
+                        <TableCell className="text-right">
+                          {isUserAdmin && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  Remover Admin
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Remover privilégios de admin</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Tem certeza que deseja remover os privilégios de administrador deste usuário?
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => removeAdmin(user.id)}>
+                                    Remover
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
 
           <TabsContent value="conversations" className="space-y-4">
             <div className="rounded-md border">
