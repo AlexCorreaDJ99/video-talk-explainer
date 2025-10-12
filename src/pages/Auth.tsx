@@ -15,6 +15,7 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nomeCompleto, setNomeCompleto] = useState("");
+  const [codigoPin, setCodigoPin] = useState("");
 
   useEffect(() => {
     const checkUser = async () => {
@@ -31,6 +32,11 @@ const Auth = () => {
     
     if (!email || !password) {
       toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+
+    if (codigoPin !== "9931") {
+      toast.error("Código PIN inválido");
       return;
     }
 
@@ -63,6 +69,7 @@ const Auth = () => {
       setEmail("");
       setPassword("");
       setNomeCompleto("");
+      setCodigoPin("");
     }
 
     setLoading(false);
@@ -150,6 +157,17 @@ const Auth = () => {
                     placeholder="Seu nome"
                     value={nomeCompleto}
                     onChange={(e) => setNomeCompleto(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-pin">Código PIN</Label>
+                  <Input
+                    id="signup-pin"
+                    type="text"
+                    placeholder="Digite o código PIN"
+                    value={codigoPin}
+                    onChange={(e) => setCodigoPin(e.target.value)}
+                    required
                   />
                 </div>
                 <div className="space-y-2">
