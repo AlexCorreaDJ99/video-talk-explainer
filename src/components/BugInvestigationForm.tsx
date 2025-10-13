@@ -82,39 +82,44 @@ export const BugInvestigationForm = ({ analysisId, onDataCollected }: BugInvesti
 
       // Preencher campos automaticamente com dados estruturados da IA
       if (data.dados_estruturados) {
-        const { motorista, passageiro, valores, reclamacao, horario, localizacao, observacoes } = data.dados_estruturados;
+        const { motorista, passageiro, valores, reclamacao, horario, localizacao, erro_tecnico, observacoes } = data.dados_estruturados;
         
-        // Preencher reclamação do cliente
-        if (reclamacao) {
-          setReclamacaoCliente(reclamacao);
-        }
+        // Reclamação do cliente
+        if (reclamacao) setReclamacaoCliente(reclamacao);
         
-        // Preencher dados do motorista
+        // Motorista
         if (motorista) {
           setDadosMotorista({
             nome: motorista.nome || '',
-            id: motorista.id || '',
-            telefone: motorista.telefone || '',
+            id: motorista.identificador || '',
+            telefone: '' // não disponível nas evidências
           });
         }
         
-        // Preencher dados do passageiro
+        // Passageiro
         if (passageiro) {
           setDadosPassageiro({
             nome: passageiro.nome || '',
-            id: passageiro.id || '',
-            telefone: passageiro.telefone || '',
+            id: passageiro.identificador || '',
+            telefone: ''
           });
         }
         
-        // Preencher dados da corrida
+        // Corrida
+        const origem = typeof localizacao === 'object' && localizacao?.origem ? localizacao.origem : (typeof localizacao === 'string' ? localizacao : '');
+        const destino = typeof localizacao === 'object' && localizacao?.destino ? localizacao.destino : '';
+        const statusFromObs = Array.isArray(observacoes)
+          ? observacoes.filter(Boolean).join(' | ')
+          : (observacoes || '');
+        const statusFinal = [erro_tecnico, statusFromObs].filter(Boolean).join(' | ');
+        
         setDadosCorrida({
           id_corrida: valores?.id_corrida || '',
           data_hora: horario || '',
-          origem: localizacao?.origem || '',
-          destino: localizacao?.destino || '',
-          valor: valores?.valor_cobrado || valores?.valor_esperado || '',
-          status: observacoes || '',
+          origem,
+          destino,
+          valor: valores?.valor_cobrado || valores?.valor_corrida || '',
+          status: statusFinal,
         });
       }
 
