@@ -80,9 +80,47 @@ export const BugInvestigationForm = ({ analysisId, onDataCollected }: BugInvesti
       const data = await response.json();
       setAnaliseIA(data.analise);
 
+      // Preencher campos automaticamente com dados estruturados da IA
+      if (data.dados_estruturados) {
+        const { motorista, passageiro, valores, reclamacao, horario, localizacao, observacoes } = data.dados_estruturados;
+        
+        // Preencher reclamação do cliente
+        if (reclamacao) {
+          setReclamacaoCliente(reclamacao);
+        }
+        
+        // Preencher dados do motorista
+        if (motorista) {
+          setDadosMotorista({
+            nome: motorista.nome || '',
+            id: motorista.id || '',
+            telefone: motorista.telefone || '',
+          });
+        }
+        
+        // Preencher dados do passageiro
+        if (passageiro) {
+          setDadosPassageiro({
+            nome: passageiro.nome || '',
+            id: passageiro.id || '',
+            telefone: passageiro.telefone || '',
+          });
+        }
+        
+        // Preencher dados da corrida
+        setDadosCorrida({
+          id_corrida: valores?.id_corrida || '',
+          data_hora: horario || '',
+          origem: localizacao?.origem || '',
+          destino: localizacao?.destino || '',
+          valor: valores?.valor_cobrado || valores?.valor_esperado || '',
+          status: observacoes || '',
+        });
+      }
+
       toast({
         title: "✅ Análise concluída!",
-        description: "A IA analisou as evidências. Veja os insights abaixo.",
+        description: "A IA analisou as evidências e preencheu os campos automaticamente.",
       });
     } catch (error) {
       console.error('Erro ao analisar:', error);
