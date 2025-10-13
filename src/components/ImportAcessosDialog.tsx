@@ -131,33 +131,37 @@ export const ImportAcessosDialog = ({ open, onOpenChange }: ImportAcessosDialogP
       // Inserir/atualizar no banco
       let successCount = 0;
       let errorCount = 0;
+      let updatedCount = 0;
 
       for (const client of clients) {
-        // Verificar se cliente já existe
+        // Verificar se já existe acesso com mesmo cliente_nome E login
         const { data: existing } = await supabase
           .from("acessos_clientes")
-          .select("id")
+          .select("id, senha")
           .eq("cliente_nome", client.cliente_nome)
+          .eq("login", client.login)
           .maybeSingle();
 
         if (existing) {
-          // Atualizar
-          const { error } = await supabase
-            .from("acessos_clientes")
-            .update({
-              login: client.login,
-              senha: client.senha,
-              observacoes: client.observacoes,
-              updated_at: new Date().toISOString()
-            })
-            .eq("id", existing.id);
+          // Se existe e senha é diferente, atualizar
+          if (existing.senha !== client.senha) {
+            const { error } = await supabase
+              .from("acessos_clientes")
+              .update({
+                senha: client.senha,
+                observacoes: client.observacoes,
+                updated_at: new Date().toISOString()
+              })
+              .eq("id", existing.id);
 
-          if (error) {
-            console.error("Erro ao atualizar:", error);
-            errorCount++;
-          } else {
-            successCount++;
+            if (error) {
+              console.error("Erro ao atualizar:", error);
+              errorCount++;
+            } else {
+              updatedCount++;
+            }
           }
+          // Se senha igual, não faz nada (evita duplicatas)
         } else {
           // Inserir novo
           const { error } = await supabase
@@ -180,11 +184,15 @@ export const ImportAcessosDialog = ({ open, onOpenChange }: ImportAcessosDialogP
 
       queryClient.invalidateQueries({ queryKey: ["acessos-clientes"] });
       
-      if (successCount > 0) {
-        toast.success(`${successCount} cliente(s) importado(s) com sucesso!`);
+      const messages = [];
+      if (successCount > 0) messages.push(`${successCount} novo(s)`);
+      if (updatedCount > 0) messages.push(`${updatedCount} atualizado(s)`);
+      
+      if (messages.length > 0) {
+        toast.success(`Importação concluída: ${messages.join(', ')}`);
       }
       if (errorCount > 0) {
-        toast.error(`${errorCount} erro(s) ao importar clientes`);
+        toast.error(`${errorCount} erro(s) ao importar`);
       }
 
       setFile(null);
