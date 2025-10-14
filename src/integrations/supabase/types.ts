@@ -145,6 +145,24 @@ export type Database = {
           },
         ]
       }
+      empresas: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
       evidences: {
         Row: {
           analysis_id: string
@@ -184,6 +202,7 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          empresa_id: string | null
           id: string
           nome_completo: string | null
           updated_at: string
@@ -191,6 +210,7 @@ export type Database = {
         Insert: {
           created_at?: string
           email: string
+          empresa_id?: string | null
           id: string
           nome_completo?: string | null
           updated_at?: string
@@ -198,11 +218,20 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string
+          empresa_id?: string | null
           id?: string
           nome_completo?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -254,6 +283,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      mesma_empresa: {
+        Args: { user_id_1: string; user_id_2: string }
         Returns: boolean
       }
     }

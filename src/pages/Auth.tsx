@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Building2 } from "lucide-react";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -16,6 +17,10 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [nomeCompleto, setNomeCompleto] = useState("");
   const [codigoPin, setCodigoPin] = useState("");
+  const [empresas, setEmpresas] = useState<Array<{ id: string; nome: string }>>([]);
+  const [empresaSelecionada, setEmpresaSelecionada] = useState<string>("");
+  const [novaEmpresa, setNovaEmpresa] = useState("");
+  const [criarNovaEmpresa, setCriarNovaEmpresa] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -25,6 +30,19 @@ const Auth = () => {
       }
     };
     checkUser();
+
+    // Carregar empresas
+    const loadEmpresas = async () => {
+      const { data, error } = await supabase
+        .from("empresas")
+        .select("id, nome")
+        .order("nome");
+      
+      if (!error && data) {
+        setEmpresas(data);
+      }
+    };
+    loadEmpresas();
   }, [navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -45,31 +63,79 @@ const Auth = () => {
       return;
     }
 
+    if (!criarNovaEmpresa && !empresaSelecionada) {
+      toast.error("Selecione uma empresa ou crie uma nova");
+      return;
+    }
+
+    if (criarNovaEmpresa && !novaEmpresa.trim()) {
+      toast.error("Digite o nome da nova empresa");
+      return;
+    }
+
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          nome_completo: nomeCompleto || email
-        },
-        emailRedirectTo: `${window.location.origin}/`
-      }
-    });
+    try {
+      let empresaId = empresaSelecionada;
 
-    if (error) {
-      if (error.message.includes("already registered")) {
-        toast.error("Este email já está cadastrado");
-      } else {
-        toast.error("Erro ao cadastrar: " + error.message);
+      // Criar nova empresa se necessário
+      if (criarNovaEmpresa) {
+        const { data: empresaData, error: empresaError } = await supabase
+          .from("empresas")
+          .insert([{ nome: novaEmpresa.trim() }])
+          .select()
+          .single();
+
+        if (empresaError) {
+          if (empresaError.message.includes("duplicate key")) {
+            toast.error("Já existe uma empresa com este nome");
+          } else {
+            toast.error("Erro ao criar empresa: " + empresaError.message);
+          }
+          setLoading(false);
+          return;
+        }
+
+        empresaId = empresaData.id;
       }
-    } else {
-      toast.success("Cadastro realizado! Faça login para continuar.");
-      setEmail("");
-      setPassword("");
-      setNomeCompleto("");
-      setCodigoPin("");
+
+      // Criar usuário
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            nome_completo: nomeCompleto || email,
+            empresa_id: empresaId
+          },
+          emailRedirectTo: `${window.location.origin}/`
+        }
+      });
+
+      if (authError) {
+        if (authError.message.includes("already registered")) {
+          toast.error("Este email já está cadastrado");
+        } else {
+          toast.error("Erro ao cadastrar: " + authError.message);
+        }
+      } else if (authData.user) {
+        // Atualizar perfil com empresa_id
+        await supabase
+          .from("profiles")
+          .update({ empresa_id: empresaId })
+          .eq("id", authData.user.id);
+
+        toast.success("Cadastro realizado! Faça login para continuar.");
+        setEmail("");
+        setPassword("");
+        setNomeCompleto("");
+        setCodigoPin("");
+        setEmpresaSelecionada("");
+        setNovaEmpresa("");
+        setCriarNovaEmpresa(false);
+      }
+    } catch (error: any) {
+      toast.error("Erro ao cadastrar: " + error.message);
     }
 
     setLoading(false);
@@ -170,6 +236,69 @@ const Auth = () => {
                     required
                   />
                 </div>
+
+                {/* Seleção de Empresa */}
+                <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-5 h-5 text-primary" />
+                    <Label className="text-base font-semibold">Empresa</Label>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      id="empresa-existente"
+                      name="tipo-empresa"
+                      checked={!criarNovaEmpresa}
+                      onChange={() => setCriarNovaEmpresa(false)}
+                      className="cursor-pointer"
+                    />
+                    <Label htmlFor="empresa-existente" className="cursor-pointer">
+                      Selecionar empresa existente
+                    </Label>
+                  </div>
+
+                  {!criarNovaEmpresa && (
+                    <Select
+                      value={empresaSelecionada}
+                      onValueChange={setEmpresaSelecionada}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma empresa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {empresas.map((empresa) => (
+                          <SelectItem key={empresa.id} value={empresa.id}>
+                            {empresa.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      id="empresa-nova"
+                      name="tipo-empresa"
+                      checked={criarNovaEmpresa}
+                      onChange={() => setCriarNovaEmpresa(true)}
+                      className="cursor-pointer"
+                    />
+                    <Label htmlFor="empresa-nova" className="cursor-pointer">
+                      Criar nova empresa
+                    </Label>
+                  </div>
+
+                  {criarNovaEmpresa && (
+                    <Input
+                      placeholder="Nome da nova empresa"
+                      value={novaEmpresa}
+                      onChange={(e) => setNovaEmpresa(e.target.value)}
+                    />
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
                   <Input
