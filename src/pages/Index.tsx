@@ -141,6 +141,12 @@ const Index = () => {
 
       if (error) throw error;
 
+      // Limpar dados salvos de análises anteriores ao criar nova conversa
+      const keysToRemove = Object.keys(localStorage).filter(
+        key => key.startsWith('bug-investigation-') || key.startsWith('resolution-form-')
+      );
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+
       setSelectedConversationId(data.id);
       setCurrentConversation({ cliente, atendente });
       setAnalysis(null);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,18 +15,36 @@ interface BugInvestigationFormProps {
 
 export const BugInvestigationForm = ({ analysisId, onDataCollected }: BugInvestigationFormProps) => {
   const { toast } = useToast();
-  const [reclamacaoCliente, setReclamacaoCliente] = useState("");
-  const [dadosMotorista, setDadosMotorista] = useState({
+  const storageKey = `bug-investigation-${analysisId}`;
+  
+  // Carregar dados salvos do localStorage
+  const loadSavedData = () => {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Erro ao carregar dados salvos:", e);
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const savedData = loadSavedData();
+  
+  const [reclamacaoCliente, setReclamacaoCliente] = useState(savedData?.reclamacaoCliente || "");
+  const [dadosMotorista, setDadosMotorista] = useState(savedData?.dadosMotorista || {
     nome: "",
     id: "",
     telefone: "",
   });
-  const [dadosPassageiro, setDadosPassageiro] = useState({
+  const [dadosPassageiro, setDadosPassageiro] = useState(savedData?.dadosPassageiro || {
     nome: "",
     id: "",
     telefone: "",
   });
-  const [dadosCorrida, setDadosCorrida] = useState({
+  const [dadosCorrida, setDadosCorrida] = useState(savedData?.dadosCorrida || {
     id_corrida: "",
     data_hora: "",
     origem: "",
@@ -36,7 +54,19 @@ export const BugInvestigationForm = ({ analysisId, onDataCollected }: BugInvesti
   });
   const [evidencias, setEvidencias] = useState<File[]>([]);
   const [analisandoImagens, setAnalisandoImagens] = useState(false);
-  const [analiseIA, setAnaliseIA] = useState("");
+  const [analiseIA, setAnaliseIA] = useState(savedData?.analiseIA || "");
+
+  // Salvar dados no localStorage sempre que houver mudança
+  useEffect(() => {
+    const dataToSave = {
+      reclamacaoCliente,
+      dadosMotorista,
+      dadosPassageiro,
+      dadosCorrida,
+      analiseIA
+    };
+    localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+  }, [reclamacaoCliente, dadosMotorista, dadosPassageiro, dadosCorrida, analiseIA, storageKey]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -149,6 +179,9 @@ export const BugInvestigationForm = ({ analysisId, onDataCollected }: BugInvesti
       analise_ia: analiseIA,
     };
 
+    // Limpar dados salvos localmente após salvar definitivamente
+    localStorage.removeItem(storageKey);
+    
     onDataCollected(dadosCompletos);
 
     toast({

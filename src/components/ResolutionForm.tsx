@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,16 +18,46 @@ interface ResolutionFormProps {
 
 export const ResolutionForm = ({ analysisId, conversationId, investigationData, onSave }: ResolutionFormProps) => {
   const { toast } = useToast();
-  const [status, setStatus] = useState<string>("pendente");
-  const [minhaInvestigacao, setMinhaInvestigacao] = useState("");
-  const [analiseFinal, setAnaliseFinal] = useState("");
-  const [solucao, setSolucao] = useState("");
+  const storageKey = `resolution-form-${analysisId}`;
+  
+  // Carregar dados salvos do localStorage
+  const loadSavedData = () => {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Erro ao carregar dados salvos:", e);
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const savedData = loadSavedData();
+  
+  const [status, setStatus] = useState<string>(savedData?.status || "pendente");
+  const [minhaInvestigacao, setMinhaInvestigacao] = useState(savedData?.minhaInvestigacao || "");
+  const [analiseFinal, setAnaliseFinal] = useState(savedData?.analiseFinal || "");
+  const [solucao, setSolucao] = useState(savedData?.solucao || "");
   const [resposta, setResposta] = useState("");
-  const [respostasEnviadas, setRespostasEnviadas] = useState<string[]>([]);
+  const [respostasEnviadas, setRespostasEnviadas] = useState<string[]>(savedData?.respostasEnviadas || []);
   const [saving, setSaving] = useState(false);
   const [gerandoRelatorio, setGerandoRelatorio] = useState(false);
   const [melhorarComIA, setMelhorarComIA] = useState(false);
   const [melhorando, setMelhorando] = useState<string | null>(null);
+
+  // Salvar dados no localStorage sempre que houver mudança
+  useEffect(() => {
+    const dataToSave = {
+      status,
+      minhaInvestigacao,
+      analiseFinal,
+      solucao,
+      respostasEnviadas
+    };
+    localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+  }, [status, minhaInvestigacao, analiseFinal, solucao, respostasEnviadas, storageKey]);
 
   const handleAddResposta = () => {
     if (resposta.trim()) {
@@ -172,6 +202,9 @@ export const ResolutionForm = ({ analysisId, conversationId, investigationData, 
         .eq("id", analysisId);
 
       if (error) throw error;
+
+      // Limpar dados salvos localmente após salvar definitivamente
+      localStorage.removeItem(storageKey);
 
       toast({
         title: "✅ Resolução registrada!",
