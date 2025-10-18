@@ -76,7 +76,7 @@ export function ITReportForm({ analysisData, defaultValues }: ITReportFormProps)
   const formatReport = (data: ReportFormData) => {
     const versaoCompleta = data.versaoApp ? ` ${data.versaoApp}` : '';
     
-    return `ATENDENTE: ${data.atendente}
+    let reportContent = `ATENDENTE: ${data.atendente}
 CLIENTE: ${data.cliente}
 VERSÃO DO APP: ANDROID ( ${data.versaoAndroid ? 'X' : ' '} ) IOS ( ${data.versaoIOS ? 'X' : ' '} )${versaoCompleta}
 APP: MOTORISTA ( ${data.appMotorista ? 'X' : ' '} ) PASSAGEIRO ( ${data.appPassageiro ? 'X' : ' '} )
@@ -88,10 +88,43 @@ SIM ( ${data.comprometeFunc ? 'X' : ' '} ) NÃO ( ${!data.comprometeFunc ? 'X' :
 DESCRIÇÃO DO OCORRIDO
 ${data.horarioRelato ? `Horário do relato: ${data.horarioRelato}.\n\n` : ''}Resumo: ${data.resumo}
 
-${data.descricao}
-${data.analiseTecnica ? `\nAnálise por motorista (dados internos)\n${data.analiseTecnica}` : ''}
-${data.leituraTecnica ? `\nLeitura técnica inicial\n\n${data.leituraTecnica}` : ''}
-${data.evidencias ? `\n\nEVIDÊNCIAS:\n${data.evidencias}` : ''}`;
+${data.descricao}`;
+
+    // Adiciona análise técnica se houver
+    if (data.analiseTecnica) {
+      reportContent += `\n\nAnálise por motorista (dados internos)\n${data.analiseTecnica}`;
+    }
+
+    // Adiciona leitura técnica se houver
+    if (data.leituraTecnica) {
+      reportContent += `\n\nLeitura técnica inicial\n\n${data.leituraTecnica}`;
+    }
+
+    // Formata evidências de forma inteligente
+    if (data.evidencias) {
+      const evidencias = data.evidencias.trim();
+      
+      // Verifica se parece ser um resultado de investigação (contém múltiplas linhas estruturadas)
+      const linhasEvidencias = evidencias.split('\n');
+      const temEstrutura = linhasEvidencias.some(linha => 
+        linha.match(/^\d+\)/) || // Começa com número)
+        linha.match(/^[A-Z][a-z]+:/) || // Começa com palavra seguida de :
+        linha.match(/ID \w+/) || // Contém ID
+        linha.match(/^\-/) || // Lista com traço
+        linha.match(/Observação:/i) ||
+        linha.match(/Consulta:/i)
+      );
+
+      if (temEstrutura) {
+        // É uma investigação estruturada
+        reportContent += `\n\n${evidencias}`;
+      } else {
+        // É uma evidência simples (links ou descrição curta)
+        reportContent += `\n\nEVIDÊNCIAS:\n${evidencias}`;
+      }
+    }
+
+    return reportContent;
   };
 
   const onSubmit = (data: ReportFormData) => {
