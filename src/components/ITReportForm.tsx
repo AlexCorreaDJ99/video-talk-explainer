@@ -15,14 +15,18 @@ import { VideoAnalysis } from "@/pages/Index";
 const reportSchema = z.object({
   atendente: z.string().min(1, "Nome do atendente é obrigatório"),
   cliente: z.string().min(1, "Nome do cliente é obrigatório"),
+  versaoApp: z.string().optional(),
   versaoAndroid: z.boolean(),
   versaoIOS: z.boolean(),
   appMotorista: z.boolean(),
   appPassageiro: z.boolean(),
   dataReclamacao: z.string().min(1, "Data é obrigatória"),
+  horarioRelato: z.string().optional(),
   comprometeFunc: z.boolean(),
+  resumo: z.string().min(10, "Resumo deve ter no mínimo 10 caracteres"),
   descricao: z.string().min(10, "Descrição deve ter no mínimo 10 caracteres"),
-  impacto: z.string().min(10, "Impacto deve ter no mínimo 10 caracteres"),
+  analiseTecnica: z.string().optional(),
+  leituraTecnica: z.string().optional(),
   evidencias: z.string().optional(),
 });
 
@@ -44,45 +48,50 @@ export function ITReportForm({ analysisData, defaultValues }: ITReportFormProps)
     defaultValues: {
       atendente: defaultValues?.atendente || "",
       cliente: defaultValues?.cliente || "",
+      versaoApp: "",
       versaoAndroid: false,
       versaoIOS: false,
       appMotorista: false,
       appPassageiro: false,
       comprometeFunc: false,
       dataReclamacao: new Date().toLocaleDateString('pt-BR'),
+      horarioRelato: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     }
   });
 
   useEffect(() => {
     if (analysisData) {
-      const descricao = analysisData.analise?.contexto || analysisData.transcricao || "";
-      const problemas = analysisData.analise?.problemas?.join("\n") || "";
-      const impacto = analysisData.analise?.insights?.join("\n") || "";
+      const contexto = analysisData.analise?.contexto || "";
+      const problemas = analysisData.analise?.problemas?.join("\n\n") || "";
+      const insights = analysisData.analise?.insights?.join("\n\n") || "";
       
-      setValue("descricao", `${descricao}\n\n${problemas}`);
-      setValue("impacto", impacto);
+      setValue("resumo", contexto);
+      setValue("descricao", problemas || analysisData.transcricao || "");
+      setValue("leituraTecnica", insights);
     }
   }, [analysisData, setValue]);
 
   const watchedValues = watch();
 
   const formatReport = (data: ReportFormData) => {
+    const versaoCompleta = data.versaoApp ? ` ${data.versaoApp}` : '';
+    
     return `ATENDENTE: ${data.atendente}
-Cliente: ${data.cliente}
-VERSÃO DO APP: ANDROID ( ${data.versaoAndroid ? 'X' : ' '} ) IOS ( ${data.versaoIOS ? 'X' : ' '} )
+CLIENTE: ${data.cliente}
+VERSÃO DO APP: ANDROID ( ${data.versaoAndroid ? 'X' : ' '} ) IOS ( ${data.versaoIOS ? 'X' : ' '} )${versaoCompleta}
 APP: MOTORISTA ( ${data.appMotorista ? 'X' : ' '} ) PASSAGEIRO ( ${data.appPassageiro ? 'X' : ' '} )
-Data de Reclamação: ${data.dataReclamacao}
+DATA DA RECLAMAÇÃO: ${data.dataReclamacao}
 
 Este erro compromete diretamente o funcionamento básico do aplicativo?
 SIM ( ${data.comprometeFunc ? 'X' : ' '} ) NÃO ( ${!data.comprometeFunc ? 'X' : ' '} )
 
-DESCRIÇÃO DO OCORRIDO:
+DESCRIÇÃO DO OCORRIDO
+${data.horarioRelato ? `Horário do relato: ${data.horarioRelato}.\n\n` : ''}Resumo: ${data.resumo}
+
 ${data.descricao}
-
-Impacto: ${data.impacto}
-
-EVIDÊNCIAS:
-${data.evidencias || 'Sem evidências anexadas.'}`;
+${data.analiseTecnica ? `\nAnálise por motorista (dados internos)\n${data.analiseTecnica}` : ''}
+${data.leituraTecnica ? `\nLeitura técnica inicial\n\n${data.leituraTecnica}` : ''}
+${data.evidencias ? `\n\nEVIDÊNCIAS:\n${data.evidencias}` : ''}`;
   };
 
   const onSubmit = (data: ReportFormData) => {
@@ -167,6 +176,12 @@ ${data.evidencias || 'Sem evidências anexadas.'}`;
                   <Label htmlFor="versaoIOS" className="font-normal">iOS</Label>
                 </div>
               </div>
+              <Input 
+                id="versaoApp" 
+                {...register("versaoApp")} 
+                placeholder="Ex: 1.2.34"
+                className="mt-2"
+              />
             </div>
 
             <div className="space-y-3">
@@ -191,12 +206,19 @@ ${data.evidencias || 'Sem evidências anexadas.'}`;
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="dataReclamacao">Data de Reclamação *</Label>
-              <Input id="dataReclamacao" {...register("dataReclamacao")} placeholder="DD/MM/AAAA" />
-              {errors.dataReclamacao && (
-                <p className="text-sm text-destructive">{errors.dataReclamacao.message}</p>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="dataReclamacao">Data de Reclamação *</Label>
+                <Input id="dataReclamacao" {...register("dataReclamacao")} placeholder="DD/MM/AAAA" />
+                {errors.dataReclamacao && (
+                  <p className="text-sm text-destructive">{errors.dataReclamacao.message}</p>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="horarioRelato">Horário do Relato</Label>
+                <Input id="horarioRelato" {...register("horarioRelato")} placeholder="HH:MM" />
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -212,12 +234,25 @@ ${data.evidencias || 'Sem evidências anexadas.'}`;
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="descricao">Descrição do Ocorrido *</Label>
+              <Label htmlFor="resumo">Resumo *</Label>
+              <Textarea 
+                id="resumo" 
+                {...register("resumo")} 
+                rows={3}
+                placeholder="Resumo breve do problema..."
+              />
+              {errors.resumo && (
+                <p className="text-sm text-destructive">{errors.resumo.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="descricao">Descrição Detalhada *</Label>
               <Textarea 
                 id="descricao" 
                 {...register("descricao")} 
                 rows={6}
-                placeholder="Descreva detalhadamente o problema encontrado..."
+                placeholder="Descrição detalhada do problema, endereços citados, comparativos com outros apps, etc..."
               />
               {errors.descricao && (
                 <p className="text-sm text-destructive">{errors.descricao.message}</p>
@@ -225,16 +260,23 @@ ${data.evidencias || 'Sem evidências anexadas.'}`;
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="impacto">Impacto *</Label>
+              <Label htmlFor="analiseTecnica">Análise Técnica (Dados de Motorista/Sistema)</Label>
               <Textarea 
-                id="impacto" 
-                {...register("impacto")} 
-                rows={4}
-                placeholder="Descreva o impacto deste problema..."
+                id="analiseTecnica" 
+                {...register("analiseTecnica")} 
+                rows={8}
+                placeholder="Cole aqui os dados técnicos: IDs de motoristas, coordenadas, timestamps, consultas ao banco, etc..."
               />
-              {errors.impacto && (
-                <p className="text-sm text-destructive">{errors.impacto.message}</p>
-              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="leituraTecnica">Leitura Técnica Inicial</Label>
+              <Textarea 
+                id="leituraTecnica" 
+                {...register("leituraTecnica")} 
+                rows={4}
+                placeholder="Interpretação técnica dos dados, conclusões preliminares..."
+              />
             </div>
 
             <div className="space-y-2">
